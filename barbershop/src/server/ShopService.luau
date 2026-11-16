@@ -187,7 +187,7 @@ function ShopService.startSession(player: Player, station: Station)
 	end
 	local o = entry.owner
 	if o.player ~= player then
-		ToastRemote:FireClient(player, "To nie twój salon! Twój ma szyld z twoim nickiem.")
+		ToastRemote:FireClient(player, "This isn't your shop! Yours has your name on the sign.")
 		return
 	end
 	local c = o.customers[station.index]
@@ -282,32 +282,32 @@ local function buyUpgrade(player: Player, id: any): (boolean, string)
 	local d = data(player)
 	local def = if type(id) == "string" then Config.UpgradeById[id] else nil
 	if not (o and d and def) then
-		return false, "Nieznane ulepszenie"
+		return false, "Unknown upgrade"
 	end
 	local level = d.upgrades[def.id] or 0
 	if level >= def.max then
-		return false, "Maksymalny poziom"
+		return false, "Already maxed out"
 	end
 	local cost = def.cost(level)
 	if d.cash < cost then
-		return false, "Za mało kasy!"
+		return false, "Not enough coins!"
 	end
 	d.cash -= cost
 	d.upgrades[def.id] = level + 1
 	PlayerData.sync(player)
 	applyLayout(o)
-	return true, `{def.name}: poziom {level + 1}`
+	return true, `{def.name} upgraded to Lv. {level + 1}!`
 end
 
 local function rebirth(player: Player): (boolean, string)
 	local o = owned[player]
 	local d = data(player)
 	if not (o and d) then
-		return false, "Brak danych"
+		return false, "Data not loaded yet"
 	end
 	local cost = Config.rebirthCost(d.rebirths)
 	if d.cash < cost then
-		return false, "Za mało kasy na rebirth!"
+		return false, "Not enough coins to rebirth!"
 	end
 	d.cash = 0
 	d.upgrades = {}
@@ -319,7 +319,7 @@ local function rebirth(player: Player): (boolean, string)
 	end
 	ShopBuilder.reset(o.shop)
 	applyLayout(o)
-	return true, `Rebirth! Teraz zarabiasz ×{Config.multiplier(d.rebirths)}`
+	return true, `Rebirth! You now earn ×{Config.multiplier(d.rebirths)}`
 end
 
 local function teleportHome(o: Owned, character: Model)
@@ -348,7 +348,7 @@ local function onPlayerAdded(player: Player)
 		end
 	end
 	if not shop then
-		ToastRemote:FireClient(player, "Wszystkie salony są zajęte — spróbuj innego serwera.")
+		ToastRemote:FireClient(player, "All shops are taken. Try another server!")
 		return
 	end
 

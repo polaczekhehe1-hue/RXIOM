@@ -43,9 +43,9 @@ GainRemote.OnClientEvent:Connect(function(amount: number, kind: string, position
 	if kind == "shave" and position then
 		Effects.popWorld(position, text)
 	elseif kind == "tip" then
-		Effects.big(`Napiwek {Format.money(amount)}!`)
+		Effects.big(`Tip! +{Format.compact(amount)} Coins`)
 	elseif kind == "helper" then
-		Effects.popAt(hud.cashAnchor() + Vector2.new(0, 40 * hud.scale()), text, Theme.Colors.Money, 26)
+		Effects.popAt(hud.cashAnchor() + Vector2.new(0, 40 * hud.scale()), text, Theme.Colors.Coin, 26)
 	end
 end)
 

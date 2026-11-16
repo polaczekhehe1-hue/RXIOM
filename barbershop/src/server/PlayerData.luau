@@ -33,7 +33,7 @@ do
 	if ok then
 		store = result
 	else
-		warn("[BarberShop] DataStore niedostępny, postęp nie będzie zapisywany:", result)
+		warn("[BarberShop] DataStore unavailable, progress will not be saved:", result)
 	end
 end
 
@@ -82,7 +82,7 @@ function PlayerData.load(player: Player): Data
 				raw = result
 				break
 			elseif attempt == 3 then
-				warn("[BarberShop] Nie udało się wczytać danych", player.Name, result)
+				warn("[BarberShop] Failed to load data for", player.Name, result)
 				canSave = false
 			else
 				task.wait(1)
@@ -96,9 +96,9 @@ function PlayerData.load(player: Player): Data
 		data = sanitize(raw),
 		canSave = canSave,
 		stats = {
-			cash = stat("NumberValue", "Kasa", leaderstats),
-			shaved = stat("IntValue", "Klienci", leaderstats),
-			rebirths = stat("IntValue", "Rebirth", leaderstats),
+			cash = stat("NumberValue", "Coins", leaderstats),
+			shaved = stat("IntValue", "Customers", leaderstats),
+			rebirths = stat("IntValue", "Rebirths", leaderstats),
 		},
 	}
 	leaderstats.Parent = player
@@ -122,7 +122,7 @@ function PlayerData.sync(player: Player)
 	entry.stats.cash.Value = data.cash
 	entry.stats.shaved.Value = data.shaved
 	entry.stats.rebirths.Value = data.rebirths
-	player:SetAttribute("Cash", data.cash)
+	player:SetAttribute("Coins", data.cash)
 	player:SetAttribute("Shaved", data.shaved)
 	player:SetAttribute("Rebirths", data.rebirths)
 	for _, def in Config.Upgrades do
@@ -151,7 +151,7 @@ function PlayerData.save(player: Player)
 		end)
 	end)
 	if not ok then
-		warn("[BarberShop] Zapis nieudany", player.Name, err)
+		warn("[BarberShop] Save failed for", player.Name, err)
 	end
 end
 

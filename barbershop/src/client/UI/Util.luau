@@ -85,6 +85,7 @@ export type LabelProps = {
 	Order: number?,
 	ZIndex: number?,
 	Rotation: number?,
+	Visible: boolean?,
 	Parent: Instance?,
 }
 
@@ -107,6 +108,7 @@ function Util.label(p: LabelProps): TextLabel
 		LayoutOrder = p.Order or 0,
 		ZIndex = p.ZIndex or 1,
 		Rotation = p.Rotation or 0,
+		Visible = p.Visible ~= false,
 		Parent = p.Parent,
 	}, if (p.Stroke or Theme.Stroke.Text) > 0 then { Util.stroke(p.Stroke or Theme.Stroke.Text, nil, true) } else nil)
 end

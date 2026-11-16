@@ -36,7 +36,7 @@ function Effects.popAt(position: Vector2, text: string, color: Color3?, size: nu
 	local label = Util.label({
 		Text = text,
 		TextSize = math.floor((size or 34) * s),
-		Color = color or Theme.Colors.Money,
+		Color = color or Theme.Colors.Coin,
 		Stroke = math.max(2, 3.5 * s),
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromOffset(position.X + rng:NextNumber(-12, 12) * s, position.Y),
@@ -72,7 +72,7 @@ end
 function Effects.big(text: string, color: Color3?)
 	local camera = workspace.CurrentCamera
 	local center = camera.ViewportSize / 2
-	Effects.popAt(Vector2.new(center.X, center.Y * 0.62), text, color or Theme.Colors.Gold, 64)
+	Effects.popAt(Vector2.new(center.X, center.Y * 0.62), text, color or Theme.Colors.Coin, 64)
 end
 
 return Effects

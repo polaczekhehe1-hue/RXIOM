@@ -50,7 +50,7 @@ function Panel.new(title: string, size: Vector2, parent: Instance, onClose: () -
 		Size = UDim2.fromOffset(size.X, size.Y),
 		Parent = root,
 	}, { Util.corner(16), Util.stroke(Theme.Stroke.Panel), Util.gradient(palette.top, palette.bottom) })
-	Tile.bricks(face, palette.brick, math.floor(size.Y / 34), 6)
+	Tile.pattern(face, size, 40, 6)
 
 	local body: Frame = create("Frame", {
 		Name = "Body",

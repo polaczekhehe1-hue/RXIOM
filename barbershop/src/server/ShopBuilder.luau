@@ -125,7 +125,8 @@ local function spotLight(parent: BasePart, range: number, brightness: number)
 	light.Range = range
 	light.Brightness = brightness
 	light.Color = C.Warm
-	light.Shadows = true
+	-- Bez cieni: dziesiątki cieniujących świateł na serwerze powodują migotanie i spadki FPS.
+	light.Shadows = false
 	light.Parent = parent
 end
 
@@ -135,15 +136,16 @@ local function buildShell(shop: Shop)
 	local height = CEILING_Y - FLOOR_Y
 	local wallY = FLOOR_Y + height / 2
 
-	-- Podłoga i ściany
+	-- Podłoga i ściany. Bryły tylko się stykają, nigdy nie nachodzą: współpłaszczyznowe ściany
+	-- w różnych kolorach migoczą (z-fighting).
 	box(shop, shell, "Floor", Vector3.new(41, 1, 33), Vector3.new(0, 0.5, 16.5), C.Floor)
-	box(shop, shell, "WallBack", Vector3.new(41, height, 1), Vector3.new(0, wallY, BACK_Z + 0.5), C.WallWhite)
-	box(shop, shell, "WallLeft", Vector3.new(1, height, 33), Vector3.new(-20, wallY, 16.5), C.WallWhite)
-	box(shop, shell, "WallRight", Vector3.new(1, height, 33), Vector3.new(20, wallY, 16.5), C.WallSage)
+	box(shop, shell, "WallBack", Vector3.new(39, height, 1), Vector3.new(0, wallY, BACK_Z + 0.5), C.WallWhite)
+	box(shop, shell, "WallLeft", Vector3.new(1, height, 32), Vector3.new(-20, wallY, 17), C.WallWhite)
+	box(shop, shell, "WallRight", Vector3.new(1, height, 32), Vector3.new(20, wallY, 17), C.WallSage)
 	box(shop, shell, "Ceiling", Vector3.new(41, 1, 33), Vector3.new(0, CEILING_Y + 0.5, 16.5), C.Ceiling)
 	-- Listwy przypodłogowe
-	box(shop, shell, "SkirtLeft", Vector3.new(0.2, 0.4, 31), Vector3.new(-19.4, FLOOR_Y + 0.2, 16.5), C.FloorDark, { Studs = false })
-	box(shop, shell, "SkirtRight", Vector3.new(0.2, 0.4, 31), Vector3.new(19.4, FLOOR_Y + 0.2, 16.5), C.FloorDark, { Studs = false })
+	box(shop, shell, "SkirtLeft", Vector3.new(0.2, 0.4, 30.8), Vector3.new(-19.4, FLOOR_Y + 0.2, 16.6), C.FloorDark, { Studs = false })
+	box(shop, shell, "SkirtRight", Vector3.new(0.2, 0.4, 30.8), Vector3.new(19.4, FLOOR_Y + 0.2, 16.6), C.FloorDark, { Studs = false })
 
 	-- Rozproszone światło z sufitu, żeby wnętrze nie było ciemne pod dachem.
 	local fill = Instance.new("SurfaceLight")
@@ -167,16 +169,17 @@ local function buildShell(shop: Shop)
 			Transparency = 0.6,
 			Studs = false,
 		})
-		for k = 0, 3 do
+		-- Słupek przy drzwiach i dwa podziały; zewnętrzną krawędź zamyka narożnik.
+		for k = 0, 2 do
 			local x = sx * (inner + k * width / 3)
 			box(shop, shell, "Mullion", Vector3.new(0.5, DOOR_TOP - FLOOR_Y, 1), Vector3.new(x, (FLOOR_Y + DOOR_TOP) / 2, frontZ), C.Black, { Studs = false })
 		end
 		box(shop, shell, "Corner", Vector3.new(1, height, 1), Vector3.new(sx * 20, wallY, frontZ), C.Black)
 	end
-	box(shop, shell, "Fascia", Vector3.new(41, CEILING_Y + 1 - DOOR_TOP, 1), Vector3.new(0, (DOOR_TOP + CEILING_Y + 1) / 2, frontZ), C.Charcoal)
+	box(shop, shell, "Fascia", Vector3.new(39, CEILING_Y - DOOR_TOP, 1), Vector3.new(0, (DOOR_TOP + CEILING_Y) / 2, frontZ), C.Charcoal)
 
 	local sign = box(shop, shell, "Sign", Vector3.new(26, 3, 0.4), Vector3.new(0, 13, -0.2), C.Black, { Studs = false })
-	shop.signLabel = Blocks.label(sign, Enum.NormalId.Front, "WOLNY LOKAL", Color3.new(1, 1, 1), Blocks.Font)
+	shop.signLabel = Blocks.label(sign, Enum.NormalId.Front, "FOR RENT", Color3.new(1, 1, 1), Blocks.Font)
 
 	-- Markiza w czerwono-białe pasy nad wejściem.
 	for i = 0, 9 do
@@ -290,8 +293,8 @@ local function buildStation(shop: Shop, index: number): Station
 
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "ShavePrompt"
-	prompt.ActionText = "Strzyż"
-	prompt.ObjectText = "Klient"
+	prompt.ActionText = "Cut Hair"
+	prompt.ObjectText = "Customer"
 	prompt.KeyboardKeyCode = Enum.KeyCode.E
 	prompt.HoldDuration = 0
 	prompt.MaxActivationDistance = 10
@@ -454,7 +457,7 @@ function ShopBuilder.build(index: number, origin: CFrame, parent: Instance): Sho
 end
 
 function ShopBuilder.setOwner(shop: Shop, ownerName: string?)
-	shop.signLabel.Text = if ownerName then `{ownerName}'s Barber Shop` else "WOLNY LOKAL"
+	shop.signLabel.Text = if ownerName then `{ownerName}'s Barber Shop` else "FOR RENT"
 end
 
 -- Dobudowuje brakujące stanowiska (nie przebudowuje istniejących).

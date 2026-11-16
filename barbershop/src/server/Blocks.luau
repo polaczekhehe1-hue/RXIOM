@@ -28,12 +28,13 @@ function Blocks.part(p: PartProps): Part
 	part.Size = p.Size
 	part.CFrame = p.CFrame
 	part.Color = p.Color
-	part.Material = p.Material or Enum.Material.SmoothPlastic
+	local studs = if p.Studs == nil then p.Shape == nil and p.Size.X >= 1 and p.Size.Z >= 1 else p.Studs
+	-- Powierzchnie Studs są wyraźnie widoczne tylko na zwykłym Plastic (na SmoothPlastic prawie znikają).
+	part.Material = p.Material or (if studs then Enum.Material.Plastic else Enum.Material.SmoothPlastic)
 	part.Transparency = p.Transparency or 0
 	part.Reflectance = p.Reflectance or 0
 	part.CanCollide = if p.CanCollide == nil then true else p.CanCollide
 	part.CastShadow = if p.CastShadow == nil then true else p.CastShadow
-	local studs = if p.Studs == nil then p.Shape == nil and p.Size.X >= 1 and p.Size.Z >= 1 else p.Studs
 	part.TopSurface = if studs then Enum.SurfaceType.Studs else Enum.SurfaceType.Smooth
 	part.BottomSurface = if studs then Enum.SurfaceType.Inlet else Enum.SurfaceType.Smooth
 	part.Parent = p.Parent

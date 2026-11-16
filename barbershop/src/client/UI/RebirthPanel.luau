@@ -1,5 +1,5 @@
 --!strict
--- Panel rebirthu: reset kasy i ulepszeń w zamian za stały mnożnik zarobków.
+-- Rebirth panel: resets coins and upgrades in exchange for a permanent earnings multiplier.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -8,8 +8,8 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Format = require(ReplicatedStorage.Shared.Format)
 local Icons = require(script.Parent.Icons)
 local Panel = require(script.Parent.Panel)
+local ShopPanel = require(script.Parent.ShopPanel)
 local Theme = require(script.Parent.Theme)
-local Tile = require(script.Parent.Tile)
 local Util = require(script.Parent.Util)
 
 local RebirthRemote = ReplicatedStorage.Remotes.Rebirth :: RemoteFunction
@@ -21,26 +21,26 @@ function RebirthPanel.new(parent: Instance, onClose: () -> (), onDone: (string, 
 	local panel = Panel.new("Rebirth", Vector2.new(480, 440), parent, onClose)
 	local body = panel.body
 
-	local gemHolder = Util.create("Frame", {
+	local iconHolder = Util.create("Frame", {
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 14),
-		Size = UDim2.fromOffset(90, 90),
+		Position = UDim2.new(0.5, 0, 0, 12),
+		Size = UDim2.fromOffset(96, 96),
 		Parent = body,
 	})
-	Icons.gem(gemHolder)
+	Icons.rebirth(iconHolder)
 
 	local multi = Util.label({
 		Text = "",
 		TextSize = 44,
-		Color = Theme.Colors.Gold,
+		Color = Theme.Colors.Coin,
 		Position = UDim2.new(0.5, 0, 0, 112),
 		AnchorPoint = Vector2.new(0.5, 0),
 		Stroke = 4,
 		Parent = body,
 	})
 	Util.label({
-		Text = "Tracisz kasę i ulepszenia salonu,\nale na zawsze zarabiasz więcej za każdy włos!",
+		Text = "You lose your coins and shop upgrades,\nbut earn more for every hair forever!",
 		TextSize = 18,
 		Color = Theme.Colors.TextDark,
 		Stroke = 0,
@@ -51,10 +51,10 @@ function RebirthPanel.new(parent: Instance, onClose: () -> (), onDone: (string, 
 	})
 
 	local busy = false
-	local button = Tile.new({
+	local button, priceText = ShopPanel.priceButton({
 		Name = "Rebirth",
 		Size = Vector2.new(260, 74),
-		Palette = Theme.Palettes.Purple,
+		Palette = Theme.Palettes.Red,
 		Text = "",
 		TextSize = 30,
 		Position = UDim2.new(0.5, 0, 1, -18),
@@ -73,14 +73,13 @@ function RebirthPanel.new(parent: Instance, onClose: () -> (), onDone: (string, 
 
 	local function refresh()
 		local rebirths = player:GetAttribute("Rebirths") or 0
-		local cash = player:GetAttribute("Cash") or 0
+		local coins = player:GetAttribute("Coins") or 0
 		local cost = Config.rebirthCost(rebirths)
 		multi.Text = `×{Config.multiplier(rebirths)}  →  ×{Config.multiplier(rebirths + 1)}`
-		local text = button.text :: TextLabel
-		text.Text = `Rebirth  {Format.money(cost)}`
-		button.setPalette(if cash >= cost then Theme.Palettes.Purple else Theme.Palettes.Gray)
+		priceText.Text = Format.compact(cost)
+		button.setPalette(if coins >= cost then Theme.Palettes.Red else Theme.Palettes.Gray)
 	end
-	player:GetAttributeChangedSignal("Cash"):Connect(refresh)
+	player:GetAttributeChangedSignal("Coins"):Connect(refresh)
 	player:GetAttributeChangedSignal("Rebirths"):Connect(refresh)
 	refresh()
 	return panel

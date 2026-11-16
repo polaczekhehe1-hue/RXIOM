@@ -100,7 +100,7 @@ function Hud.mount(callbacks: Callbacks): Hud
 		Size = UDim2.fromOffset(300, 160),
 		Parent = root,
 	}, { Util.list(Enum.FillDirection.Vertical, 12, Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Top) })
-	local cashLabel = counter(stats, "Cash", Theme.Palettes.Green, Vector2.new(270, 72), 1, Icons.coin)
+	local cashLabel = counter(stats, "Coins", Theme.Palettes.Gold, Vector2.new(270, 72), 1, Icons.coin)
 	local shavedLabel = counter(stats, "Shaved", Theme.Palettes.Cyan, Vector2.new(210, 54), 2, Icons.scissors)
 
 	-- Menu po lewej: kafelki jak na referencji.
@@ -136,6 +136,7 @@ function Hud.mount(callbacks: Callbacks): Hud
 			Size = Vector2.new(math.clamp(#message * 13 + 60, 240, 600), 56),
 			Palette = if ok == false then Theme.Palettes.Red elseif ok == true then Theme.Palettes.Green else Theme.Palettes.Cyan,
 			Text = message,
+			Pattern = false,
 			TextSize = 24,
 			Parent = toastHolder,
 		})
@@ -181,24 +182,22 @@ function Hud.mount(callbacks: Callbacks): Hud
 			Icons.arrowUp(c)
 		end,
 		IconScale = 0.66,
-		Label = "Ulepsz",
-		LabelSize = 32,
+		Label = "Upgrades",
+		LabelSize = 30,
 		Order = 1,
 		Parent = menu,
 		OnClick = function()
 			toggle(upgradePanel)
 		end,
 	})
+	-- Rebirth 1:1 z referencji: czerwony kafelek z teksturą, strzałki w kółko i czerwona poświata, bez napisu.
 	Tile.new({
 		Name = "Rebirth",
 		Size = Vector2.new(118, 118),
-		Palette = Theme.Palettes.Purple,
-		Icon = function(c)
-			Icons.gem(c)
-		end,
-		IconScale = 0.66,
-		Label = "Rebirth",
-		LabelSize = 32,
+		Palette = Theme.Palettes.Red,
+		Icon = Icons.rebirth,
+		IconScale = 0.9,
+		Glow = Theme.Colors.Glow,
 		Order = 2,
 		Parent = menu,
 		OnClick = function()
@@ -275,7 +274,7 @@ function Hud.mount(callbacks: Callbacks): Hud
 			Icons.cross(c)
 		end,
 		IconScale = 0.5,
-		Label = "Wyjdź",
+		Label = "Exit",
 		LabelSize = 30,
 		Order = 2,
 		Parent = controls,
@@ -284,7 +283,7 @@ function Hud.mount(callbacks: Callbacks): Hud
 	rotateTile("▶", -1, 3)
 
 	local hint = Util.label({
-		Text = "Przytrzymaj i jedź po włosach!",
+		Text = "Hold and swipe over the hair!",
 		TextSize = 30,
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, 120),
@@ -292,13 +291,13 @@ function Hud.mount(callbacks: Callbacks): Hud
 		Parent = root,
 	})
 
-	player:GetAttributeChangedSignal("Cash"):Connect(function()
-		cashLabel.Text = Format.money(player:GetAttribute("Cash") or 0)
+	player:GetAttributeChangedSignal("Coins"):Connect(function()
+		cashLabel.Text = Format.compact(player:GetAttribute("Coins") or 0)
 	end)
 	player:GetAttributeChangedSignal("Shaved"):Connect(function()
 		shavedLabel.Text = Format.compact(player:GetAttribute("Shaved") or 0)
 	end)
-	cashLabel.Text = Format.money(player:GetAttribute("Cash") or 0)
+	cashLabel.Text = Format.compact(player:GetAttribute("Coins") or 0)
 	shavedLabel.Text = Format.compact(player:GetAttribute("Shaved") or 0)
 
 	return {
@@ -315,7 +314,7 @@ function Hud.mount(callbacks: Callbacks): Hud
 		end,
 		setProgress = function(remaining: number, total: number)
 			local done = total - remaining
-			progressLabel.Text = `Zgolone {done}/{total}`
+			progressLabel.Text = `Shaved {done}/{total}`
 			Util.tween(progressFill, Util.Quick, { Size = UDim2.fromScale(math.max(done / math.max(total, 1), 0.06), 1) })
 		end,
 		cashAnchor = function()

@@ -35,68 +35,68 @@ end
 Config.Upgrades = {
 	{
 		id = "clippers",
-		name = "Maszynka",
+		name = "Clippers",
 		icon = "✂️",
-		description = "Każdy zgolony włos daje +1 więcej.",
+		description = "Every hair you shave gives +1 more coin.",
 		max = 100,
 		cost = geometric(30, 1.45),
 		effect = function(level: number): string
-			return `+{1 + level} / włos`
+			return `+{1 + level} / hair`
 		end,
 	},
 	{
 		id = "chairs",
-		name = "Fotele",
+		name = "Chairs",
 		icon = "💺",
-		description = "Nowe stanowisko — więcej klientów naraz.",
+		description = "A new station: serve more customers at once.",
 		max = Config.MaxChairs - 1,
 		cost = geometric(60, 3.2),
 		effect = function(level: number): string
-			return `{1 + level} fotel(e)`
+			return `{1 + level} chair(s)`
 		end,
 	},
 	{
 		id = "brush",
-		name = "Szeroka maszynka",
+		name = "Wide Trimmer",
 		icon = "🪒",
-		description = "Golisz kilka włosów jednym ruchem.",
+		description = "Shave several hairs with one swipe.",
 		max = 3,
 		cost = steps({ 250, 2500, 25000 }),
 		effect = function(level: number): string
-			return if level == 0 then "1 włos" else `promień {level}`
+			return if level == 0 then "1 hair" else `radius {level}`
 		end,
 	},
 	{
 		id = "decor",
-		name = "Wystrój",
+		name = "Decor",
 		icon = "🪴",
-		description = "Ładniejszy salon: częściej przychodzą klienci i dają większe napiwki.",
+		description = "A nicer shop: customers come more often and tip more.",
 		max = 5,
 		cost = geometric(120, 4),
 		effect = function(level: number): string
-			return `poziom {level}`
+			return `level {level}`
 		end,
 	},
 	{
 		id = "hair",
-		name = "Bujne fryzury",
+		name = "Bushy Hair",
 		icon = "💇",
-		description = "Klienci mają więcej włosów do zgolenia.",
+		description = "Customers come in with more hair to shave.",
 		max = 3,
 		cost = geometric(400, 5),
 		effect = function(level: number): string
-			return `+{level} warstw(y)`
+			return `+{level} layer(s)`
 		end,
 	},
 	{
 		id = "helper",
-		name = "Pomocnik",
+		name = "Helper",
 		icon = "👷",
-		description = "Zatrudniony fryzjer goli klientów za ciebie co sekundę.",
+		description = "A hired barber shaves customers for you every second.",
 		max = 10,
 		cost = geometric(750, 2.1),
 		effect = function(level: number): string
-			return `{level} włos/s`
+			return `{level} hair/s`
 		end,
 	},
 } :: { UpgradeDef }

@@ -1,11 +1,12 @@
 --!strict
--- Panel ulepszeń: karta na każde ulepszenie z ikoną w kafelku, opisem, poziomem i zielonym przyciskiem ceny.
+-- Upgrades panel: one card per upgrade with an icon tile, description, level and a green coin-price button.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Format = require(ReplicatedStorage.Shared.Format)
+local Icons = require(script.Parent.Icons)
 local Panel = require(script.Parent.Panel)
 local Theme = require(script.Parent.Theme)
 local Tile = require(script.Parent.Tile)
@@ -18,9 +19,28 @@ local ShopPanel = {}
 
 local CARD_HEIGHT = 108
 
+-- Przycisk z ceną: moneta po lewej, kwota obok.
+function ShopPanel.priceButton(props: Tile.TileProps): (Tile.Tile, TextLabel)
+	local button = Tile.new(props)
+	local coinHolder = create("Frame", {
+		Name = "Coin",
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 10, 0.5, 0),
+		Size = UDim2.fromOffset(props.Size.Y * 0.62, props.Size.Y * 0.62),
+		ZIndex = 4,
+		Parent = button.face,
+	})
+	Icons.coin(coinHolder)
+	local text = button.text :: TextLabel
+	text.Position = UDim2.fromOffset(props.Size.Y * 0.62 + 6, 0)
+	text.Size = UDim2.new(1, -(props.Size.Y * 0.62 + 12), 1, 0)
+	return button, text
+end
+
 function ShopPanel.new(parent: Instance, onClose: () -> (), toast: (string, boolean?) -> ()): Panel.Panel
 	local player = Players.LocalPlayer
-	local panel = Panel.new("Ulepszenia", Vector2.new(640, 560), parent, onClose)
+	local panel = Panel.new("Upgrades", Vector2.new(640, 560), parent, onClose)
 	local scroll = Panel.scroller(panel.body, Util.list(Enum.FillDirection.Vertical, 12, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Top))
 
 	local refreshers: { () -> () } = {}
@@ -54,7 +74,7 @@ function ShopPanel.new(parent: Instance, onClose: () -> (), toast: (string, bool
 		local level = Util.label({
 			Text = "",
 			TextSize = 18,
-			Color = Theme.Colors.Gold,
+			Color = Theme.Colors.Coin,
 			Position = UDim2.fromOffset(106, 46),
 			AlignX = Enum.TextXAlignment.Left,
 			Stroke = 2.5,
@@ -73,8 +93,7 @@ function ShopPanel.new(parent: Instance, onClose: () -> (), toast: (string, bool
 		description.TextYAlignment = Enum.TextYAlignment.Top
 
 		local buying = false
-		local button: Tile.Tile
-		button = Tile.new({
+		local button, priceText = ShopPanel.priceButton({
 			Name = "Buy",
 			Size = Vector2.new(160, 64),
 			Palette = Theme.Palettes.Green,
@@ -93,16 +112,17 @@ function ShopPanel.new(parent: Instance, onClose: () -> (), toast: (string, bool
 				toast(message, ok)
 			end,
 		})
+		local coin = button.face:FindFirstChild("Coin") :: Frame
 
 		local function refresh()
 			local lvl = player:GetAttribute(`Lvl_{def.id}`) or 0
-			local cash = player:GetAttribute("Cash") or 0
+			local coins = player:GetAttribute("Coins") or 0
 			local maxed = lvl >= def.max
-			level.Text = if maxed then `MAX  •  {def.effect(lvl)}` else `Poz. {lvl}  •  {def.effect(lvl)} → {def.effect(lvl + 1)}`
+			level.Text = if maxed then `MAX  •  {def.effect(lvl)}` else `Lv. {lvl}  •  {def.effect(lvl)} → {def.effect(lvl + 1)}`
 			local cost = def.cost(lvl)
-			local text = button.text :: TextLabel
-			text.Text = if maxed then "MAX" else Format.money(cost)
-			local affordable = not maxed and cash >= cost
+			coin.Visible = not maxed
+			priceText.Text = if maxed then "MAX" else Format.compact(cost)
+			local affordable = not maxed and coins >= cost
 			button.setPalette(if maxed then Theme.Palettes.Gold elseif affordable then Theme.Palettes.Green else Theme.Palettes.Gray)
 			button.setEnabled(not maxed)
 		end
@@ -111,7 +131,7 @@ function ShopPanel.new(parent: Instance, onClose: () -> (), toast: (string, bool
 		refresh()
 	end
 
-	player:GetAttributeChangedSignal("Cash"):Connect(function()
+	player:GetAttributeChangedSignal("Coins"):Connect(function()
 		if panel.isOpen() then
 			for _, refresh in refreshers do
 				refresh()

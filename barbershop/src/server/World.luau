@@ -96,7 +96,7 @@ local function plaza(parent: Instance)
 	spawn.Size = Vector3.new(8, 0.4, 8)
 	spawn.CFrame = CFrame.new(0, 0.6, 14)
 	spawn.Color = STONE
-	spawn.Material = Enum.Material.SmoothPlastic
+	spawn.Material = Enum.Material.Plastic
 	spawn.TopSurface = Enum.SurfaceType.Studs
 	spawn.Neutral = true
 	spawn.Duration = 0
@@ -127,10 +127,11 @@ function World.build(): { ShopBuilder.Shop }
 		-- Ścieżka z placu do salonu z latarniami po bokach.
 		local pathStart, pathEnd = dir * 24, dir * (PLOT_RADIUS - 10)
 		local length = (pathEnd - pathStart).Magnitude
-		local pathCF = CFrame.lookAt((pathStart + pathEnd) / 2, pathEnd) + Vector3.new(0, 0.2, 0)
-		Blocks.part({ Name = "Path", Size = Vector3.new(8, 0.4, length), CFrame = pathCF, Color = PATH, Parent = map })
+		-- Ścieżka zaczyna się pod płytami placu, więc jest niższa od nich (0.3 vs 0.4), żeby nie migotała.
+		local pathCF = CFrame.lookAt((pathStart + pathEnd) / 2, pathEnd) + Vector3.new(0, 0.15, 0)
+		Blocks.part({ Name = "Path", Size = Vector3.new(8, 0.3, length), CFrame = pathCF, Color = PATH, Parent = map })
 		for _, side in { -1, 1 } do
-			lamp(map, CFrame.new(pathCF.Position + pathCF.RightVector * side * 5.5 - Vector3.new(0, 0.2, 0)))
+			lamp(map, CFrame.new(pathCF.Position + pathCF.RightVector * side * 5.5 - Vector3.new(0, 0.15, 0)))
 		end
 
 		-- Drzewa pomiędzy działkami.

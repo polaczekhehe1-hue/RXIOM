@@ -19,8 +19,4 @@ function Format.compact(n: number): string
 	return text .. SUFFIXES[tier]
 end
 
-function Format.money(n: number): string
-	return "$" .. Format.compact(n)
-end
-
 return Format
