@@ -1,0 +1,84 @@
+{
+	"name": "BarberShop",
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"Shared": {
+				"$path": "src/shared"
+			},
+			"Remotes": {
+				"$className": "Folder",
+				"Session": {
+					"$className": "RemoteEvent"
+				},
+				"Shave": {
+					"$className": "RemoteEvent"
+				},
+				"StopShave": {
+					"$className": "RemoteEvent"
+				},
+				"Gain": {
+					"$className": "RemoteEvent"
+				},
+				"Toast": {
+					"$className": "RemoteEvent"
+				},
+				"BuyUpgrade": {
+					"$className": "RemoteFunction"
+				},
+				"Rebirth": {
+					"$className": "RemoteFunction"
+				}
+			}
+		},
+		"ServerScriptService": {
+			"Server": {
+				"$path": "src/server"
+			}
+		},
+		"StarterPlayer": {
+			"$properties": {
+				"CameraMaxZoomDistance": 60
+			},
+			"StarterPlayerScripts": {
+				"Client": {
+					"$path": "src/client"
+				}
+			}
+		},
+		"Lighting": {
+			"$properties": {
+				"Technology": "Future",
+				"ClockTime": 14.5,
+				"Brightness": 2.5,
+				"Ambient": [0.42, 0.42, 0.46],
+				"OutdoorAmbient": [0.55, 0.55, 0.6],
+				"EnvironmentDiffuseScale": 1,
+				"EnvironmentSpecularScale": 0.5,
+				"GlobalShadows": true,
+				"ShadowSoftness": 0.3
+			},
+			"Atmosphere": {
+				"$className": "Atmosphere",
+				"$properties": {
+					"Density": 0.25,
+					"Offset": 0.1,
+					"Color": [0.78, 0.83, 0.9],
+					"Decay": [0.5, 0.6, 0.7],
+					"Glare": 0,
+					"Haze": 1
+				}
+			},
+			"ColorCorrection": {
+				"$className": "ColorCorrectionEffect",
+				"$properties": {
+					"Saturation": 0.12,
+					"Contrast": 0.05
+				}
+			},
+			"Sky": {
+				"$className": "Sky"
+			}
+		}
+	}
+}
