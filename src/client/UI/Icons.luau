@@ -1,6 +1,7 @@
 --!strict
 -- Proste ikony rysowane z ramek, żeby nie zależeć od wgrywanych assetów.
 
+local CoinImage = require(script.Parent.CoinImage)
 local Theme = require(script.Parent.Theme)
 local Util = require(script.Parent.Util)
 
@@ -106,7 +107,7 @@ end
 -- Wypełnia wielokąty (reguła parzystości, więc wielokąt w środku drugiego robi dziurę) poziomymi
 -- paskami. Współrzędne w `bounds`; `color(t)` dostaje pozycję wiersza od 0 (góra) do 1 (dół).
 local function fillPolygons(
-	parent: Frame,
+	parent: GuiObject,
 	polygons: { { Vector2 } },
 	bounds: Rect,
 	rows: number,
@@ -241,19 +242,37 @@ local COIN_INNER = hexagon(0.37)
 local COIN_SQUARE = tiltedSquare(0.2)
 local COIN_HOLE = tiltedSquare(0.065)
 
-function Icons.currency(size: number, order: number?): Frame
-	local frame = box("CurrencyIcon", size, order)
+-- Zastępcza moneta z ramek, gdy obrazka nie da się wyświetlić.
+local function drawnCoin(parent: GuiObject, size: number)
 	local rows = math.max(12, math.ceil(size * 1.25))
-	fillPolygons(frame, { COIN_OUTER }, COIN_BOUNDS, rows, function(t)
+
+	fillPolygons(parent, { COIN_OUTER }, COIN_BOUNDS, rows, function(t)
 		return SILVER_TOP:Lerp(SILVER_BOTTOM, t)
 	end, 1)
-	fillPolygons(frame, { COIN_INNER }, COIN_BOUNDS, rows, function()
+	fillPolygons(parent, { COIN_INNER }, COIN_BOUNDS, rows, function()
 		return COIN_FACE
 	end, 2)
-	fillPolygons(frame, { COIN_SQUARE, COIN_HOLE }, COIN_BOUNDS, rows, function()
+	fillPolygons(parent, { COIN_SQUARE, COIN_HOLE }, COIN_BOUNDS, rows, function()
 		return COIN_MARK
 	end, 3)
-	return frame
+end
+
+-- Ikona waluty RXI: grafika monety marki.
+function Icons.currency(size: number, order: number?): ImageLabel
+	local image: ImageLabel = create("ImageLabel", {
+		Name = "CurrencyIcon",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromOffset(size, size),
+		ScaleType = Enum.ScaleType.Fit,
+		LayoutOrder = order or 0,
+	})
+	local content = CoinImage.content()
+	if content then
+		image.ImageContent = content
+	else
+		drawnCoin(image, size)
+	end
+	return image
 end
 
 function Icons.dot(size: number, color: Color3, order: number?): Frame

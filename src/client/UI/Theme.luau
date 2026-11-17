@@ -47,6 +47,9 @@ Theme.DesignSize = Vector2.new(1600, 820)
 
 Theme.Site = "rxiom.pro"
 
+-- Opcjonalnie: ID obrazka monety RXI wgranego na Roblox (Decal/Image). 0 = użyj wbudowanych pikseli.
+Theme.CoinImageAssetId = 0
+
 -- Waluta w grze (odpowiednik SOL na Axiom).
 Theme.Currency = require(game:GetService("ReplicatedStorage").Shared.Config).Currency
 
