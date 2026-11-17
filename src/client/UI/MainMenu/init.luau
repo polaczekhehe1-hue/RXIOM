@@ -15,9 +15,8 @@ local Util = require(UI.Util)
 
 local BottomBar = require(script.BottomBar)
 local CoinView = require(script.CoinView)
-local FilterBar = require(script.FilterBar)
+local DiscoverPage = require(script.DiscoverPage)
 local PortfolioPage = require(script.PortfolioPage)
-local TokenTable = require(script.TokenTable)
 local TopBar = require(script.TopBar)
 
 local create = Util.create
@@ -194,19 +193,10 @@ function MainMenu.mount(): Handle
 	topBar = TopBar.new(navigation)
 	topBar.Frame.Parent = site
 
-	-- Discover: filtry + tabela coinów
-	local discover: Frame = create("Frame", {
-		Name = "Discover",
-		BackgroundTransparency = 1,
-		Size = UDim2.fromScale(1, 1),
-		Parent = content,
-	})
-	FilterBar.new().Frame.Parent = discover
-	local tokenTable = TokenTable.new(openCoin)
-	tokenTable.Frame.Position = UDim2.fromOffset(0, FilterBar.Height)
-	tokenTable.Frame.Size = UDim2.new(1, 0, 1, -FilterBar.Height)
-	tokenTable.Frame.Parent = discover
-	pages.Discover = discover
+	-- Discover: karta "Prices" + "Top Movers"
+	local discover = DiscoverPage.new(openCoin)
+	discover.Frame.Parent = content
+	pages.Discover = discover.Frame
 
 	coinView = CoinView.new(navigation.Discover)
 	coinView.Frame.Parent = content

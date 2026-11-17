@@ -153,6 +153,51 @@ function Icons.logo(height: number, order: number?, color: Color3?): Frame
 	return frame
 end
 
+-- Srebrna tarcza z logo RXIOM (karta doładowania portfela). Kształt w jednostkach 0..1 ramki.
+local SHIELD = {
+	Vector2.new(0.5, 0),
+	Vector2.new(0.93, 0.13),
+	Vector2.new(0.93, 0.5),
+	Vector2.new(0.89, 0.66),
+	Vector2.new(0.8, 0.8),
+	Vector2.new(0.67, 0.91),
+	Vector2.new(0.5, 1),
+	Vector2.new(0.33, 0.91),
+	Vector2.new(0.2, 0.8),
+	Vector2.new(0.11, 0.66),
+	Vector2.new(0.07, 0.5),
+	Vector2.new(0.07, 0.13),
+}
+local UNIT = Rect.new(0, 0, 1, 1)
+
+function Icons.shieldBadge(height: number, order: number?): Frame
+	local frame: Frame = create("Frame", {
+		Name = "ShieldBadge",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromOffset(math.round(height * 0.86), height),
+		LayoutOrder = order or 0,
+	})
+	local inner = {}
+	for i, p in SHIELD do
+		inner[i] = Vector2.new(0.5 + (p.X - 0.5) * 0.76, 0.47 + (p.Y - 0.5) * 0.78)
+	end
+	local rows = math.max(24, math.ceil(height * 1.2))
+	local silverTop, silverBottom = Color3.fromHex("F4F4F4"), Color3.fromHex("7A7A7A")
+	local faceTop, faceBottom = Color3.fromHex("222222"), Color3.fromHex("050505")
+	fillPolygons(frame, { SHIELD }, UNIT, rows, function(t)
+		return silverTop:Lerp(silverBottom, t)
+	end, 1)
+	fillPolygons(frame, { inner }, UNIT, rows, function(t)
+		return faceTop:Lerp(faceBottom, t)
+	end, 2)
+	local logo = Icons.logo(math.round(height * 0.24))
+	logo.AnchorPoint = Vector2.new(0.5, 0.5)
+	logo.Position = UDim2.fromScale(0.5, 0.46)
+	logo.ZIndex = 3
+	logo.Parent = frame
+	return frame
+end
+
 -- Grafika marki wgrana na Roblox, przycięta do `Crop` (w pikselach oryginału). Przycięcie robi ramka
 -- z ClipsDescendants i powiększony obrazek w środku, więc działa niezależnie od tego, do jakiej
 -- rozdzielczości Roblox przeskalował wgrany plik.
@@ -396,15 +441,15 @@ function Icons.plus(size: number, color: Color3, order: number?): Frame
 	return frame
 end
 
--- Kwadratowa ikonka coina z inicjałami, w kolorze coina.
-function Icons.token(color: Color3, ticker: string, size: number, order: number?): Frame
+-- Ikonka coina z inicjałami, w kolorze coina (kwadratowa albo okrągła).
+function Icons.token(color: Color3, ticker: string, size: number, order: number?, rounded: boolean?): Frame
 	local initials = string.sub(ticker, 1, 1) .. string.sub(ticker, -1)
 	local frame: Frame = create("Frame", {
 		Name = "TokenIcon",
 		Size = UDim2.fromOffset(size, size),
 		BackgroundColor3 = color,
 		LayoutOrder = order or 0,
-	}, { Util.corner(math.max(4, size // 10)), Util.stroke(color, 2) })
+	}, { if rounded then Util.round() else Util.corner(math.max(4, size // 10)), Util.stroke(color, 2) })
 	create("UIGradient", {
 		Rotation = 45,
 		Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(90, 90, 90)),

@@ -8,7 +8,7 @@ local Signal = require(ReplicatedStorage.Shared.Signal)
 
 export type State = {
 	Timeframe: string,
-	Sort: "Top" | "Trending",
+	Sort: "Top" | "Trending" | "Gainers" | "New",
 	Search: string,
 	QuickBuy: number,
 	Slippage: number,

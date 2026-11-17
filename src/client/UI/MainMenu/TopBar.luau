@@ -163,10 +163,15 @@ function TopBar.new(nav: Navigation): TopBar
 	navFrame.Parent = left
 	local navButtons: { [string]: TextButton } = {}
 	local active = "Discover"
+	-- Aktywna zakładka ma podświetlone tło (pigułkę), pozostałe tylko tekst.
 	local function setActive(name: string)
 		active = name
 		for itemName, b in navButtons do
-			Util.tween(b, { TextColor3 = if itemName == active then Colors.Text else Colors.TextMuted })
+			local isActive = itemName == active
+			Util.tween(b, {
+				TextColor3 = if isActive then Colors.Text else Colors.TextMuted,
+				BackgroundTransparency = if isActive then 0 else 1,
+			})
 		end
 	end
 	for i, name in NAV_ITEMS do
@@ -176,15 +181,24 @@ function TopBar.new(nav: Navigation): TopBar
 			AutomaticSize = Enum.AutomaticSize.X,
 			Size = UDim2.fromOffset(0, 36),
 			BackgroundColor3 = Colors.Elevated,
-			BackgroundTransparency = 1,
+			BackgroundTransparency = if name == active then 0 else 1,
 			Text = name,
-			TextSize = 17,
+			TextSize = 16,
 			FontFace = Fonts.SemiBold,
 			TextColor3 = if name == active then Colors.Text else Colors.TextMuted,
 			LayoutOrder = i,
 			Parent = navFrame,
-		}, { Util.padding(0, 12), Util.corner(8) })
-		Util.hoverBackground(button, Colors.Elevated, Colors.Elevated, 1)
+		}, { Util.padding(0, 14), Util.round() })
+		button.MouseEnter:Connect(function()
+			if name ~= active then
+				Util.tween(button, { BackgroundTransparency = 0.5, TextColor3 = Colors.Text })
+			end
+		end)
+		button.MouseLeave:Connect(function()
+			if name ~= active then
+				Util.tween(button, { BackgroundTransparency = 1, TextColor3 = Colors.TextMuted })
+			end
+		end)
 		button.Activated:Connect(function()
 			if name == "Discover" then
 				nav.Discover()
