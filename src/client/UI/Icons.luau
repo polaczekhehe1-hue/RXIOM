@@ -59,6 +59,100 @@ local function triangle(frame: Frame, size: number, thickness: number, color: Co
 	end
 end
 
+-- Logo RXIOM: pochylone "R" z grafiki marki, rysowane na przezroczystym tle. Kontur (w pikselach
+-- grafiki 1254x1254) wypełniany poziomymi paskami, bo Roblox nie ma kształtów wektorowych.
+local LOGO_BOUNDS = Rect.new(198, 368, 1047, 854)
+local LOGO_OUTER = {
+	Vector2.new(405, 368),
+	Vector2.new(955, 368),
+	Vector2.new(1000, 375),
+	Vector2.new(1030, 395),
+	Vector2.new(1045, 420),
+	Vector2.new(1047, 445),
+	Vector2.new(1040, 470),
+	Vector2.new(1000, 563),
+	Vector2.new(980, 595),
+	Vector2.new(950, 625),
+	Vector2.new(912, 648),
+	Vector2.new(870, 660),
+	Vector2.new(812, 663),
+	Vector2.new(1000, 854),
+	Vector2.new(781, 854),
+	Vector2.new(617, 663),
+	Vector2.new(445, 663),
+	Vector2.new(378, 821),
+	Vector2.new(198, 821),
+}
+local LOGO_HOLE = {
+	Vector2.new(525, 479),
+	Vector2.new(855, 479),
+	Vector2.new(870, 485),
+	Vector2.new(875, 497),
+	Vector2.new(860, 532),
+	Vector2.new(845, 548),
+	Vector2.new(820, 557),
+	Vector2.new(490, 557),
+}
+
+local function crossings(polygon: { Vector2 }, y: number, out: { number })
+	for i, a in polygon do
+		local b = polygon[i % #polygon + 1]
+		if (a.Y <= y and b.Y > y) or (b.Y <= y and a.Y > y) then
+			table.insert(out, a.X + (y - a.Y) / (b.Y - a.Y) * (b.X - a.X))
+		end
+	end
+end
+
+-- Wypełnia wielokąty (reguła parzystości, więc wielokąt w środku drugiego robi dziurę) poziomymi
+-- paskami. Współrzędne w `bounds`; `color(t)` dostaje pozycję wiersza od 0 (góra) do 1 (dół).
+local function fillPolygons(
+	parent: GuiObject,
+	polygons: { { Vector2 } },
+	bounds: Rect,
+	rows: number,
+	color: (t: number) -> Color3,
+	zIndex: number?
+)
+	local w, h = bounds.Width, bounds.Height
+	for row = 0, rows - 1 do
+		local t = (row + 0.5) / rows
+		local y = bounds.Min.Y + t * h
+		local xs = {}
+		for _, polygon in polygons do
+			crossings(polygon, y, xs)
+		end
+		table.sort(xs)
+		for i = 1, #xs - 1, 2 do
+			create("Frame", {
+				Position = UDim2.fromScale((xs[i] - bounds.Min.X) / w, row / rows),
+				-- +1 px wysokości, żeby między paskami nie było szpar po skalowaniu.
+				Size = UDim2.new((xs[i + 1] - xs[i]) / w, 0, 1 / rows, 1),
+				BackgroundColor3 = color(t),
+				BorderSizePixel = 0,
+				ZIndex = zIndex or 1,
+				Parent = parent,
+			})
+		end
+	end
+end
+
+Icons.LogoAspect = LOGO_BOUNDS.Width / LOGO_BOUNDS.Height
+
+-- `height` to wysokość litery w pikselach; szerokość wynika z proporcji logo.
+function Icons.logo(height: number, order: number?, color: Color3?): Frame
+	local frame: Frame = create("Frame", {
+		Name = "LogoIcon",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromOffset(math.round(height * Icons.LogoAspect), height),
+		LayoutOrder = order or 0,
+	})
+	local fill = color or Colors.Text
+	fillPolygons(frame, { LOGO_OUTER, LOGO_HOLE }, LOGO_BOUNDS, math.max(12, math.ceil(height * 2)), function()
+		return fill
+	end)
+	return frame
+end
+
 -- Grafika marki wgrana na Roblox, przycięta do `Crop` (w pikselach oryginału). Przycięcie robi ramka
 -- z ClipsDescendants i powiększony obrazek w środku, więc działa niezależnie od tego, do jakiej
 -- rozdzielczości Roblox przeskalował wgrany plik.
@@ -80,13 +174,6 @@ local function croppedImage(name: string, spec: Theme.ImageSpec, width: number, 
 		Parent = frame,
 	})
 	return frame
-end
-
-Icons.LogoAspect = Theme.Images.Logo.Crop.Width / Theme.Images.Logo.Crop.Height
-
--- Logo RXIOM (litera "R"); `height` to wysokość litery, szerokość wynika z proporcji.
-function Icons.logo(height: number, order: number?): Frame
-	return croppedImage("LogoIcon", Theme.Images.Logo, math.round(height * Icons.LogoAspect), height, order)
 end
 
 export type Direction = "Down" | "Up" | "Left" | "Right"

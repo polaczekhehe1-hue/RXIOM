@@ -22,6 +22,7 @@ local WALLET_LENGTH = 24
 local BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 local PARTICLES = 46
 local CARD_WIDTH = 440
+local CARD_PAD = 16
 local FIELD_BG = Color3.fromHex("0E0E0E")
 local PANEL_BG = Color3.fromHex("0F0F0F")
 local ROW_BG = Color3.fromHex("161616")
@@ -214,18 +215,23 @@ function Login.show(host: Host)
 		end)
 	)
 
-	-- Karta logowania (CanvasGroup, żeby wjechała jednym płynnym zanikaniem).
+	-- Karta logowania (CanvasGroup, żeby wjechała jednym płynnym zanikaniem). CanvasGroup przycina
+	-- wszystko poza swoimi granicami, więc margines CARD_PAD zostawia miejsce na obrysy pól
+	-- i powiększające się przyciski.
 	local card: CanvasGroup = create("CanvasGroup", {
 		Name = "Card",
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.new(0.5, 0, 0.5, 28),
-		Size = UDim2.fromOffset(CARD_WIDTH, 0),
+		Size = UDim2.fromOffset(CARD_WIDTH + CARD_PAD * 2, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
 		GroupTransparency = 1,
 		ZIndex = 2,
 		Parent = screen,
-	}, { Util.vlist(14, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Top) })
+	}, {
+		Util.padding(CARD_PAD),
+		Util.vlist(14, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Top),
+	})
 
 	local brand = Util.group("Brand", 1, Util.hlist(14))
 	brand.Parent = card
@@ -387,7 +393,12 @@ function Login.show(host: Host)
 		Parent = screen,
 	}, {
 		Util.corner(16),
-		Util.stroke(Colors.Border),
+		-- Obrys do środka: zewnętrzny CanvasGroup by przyciął.
+		create("UIStroke", {
+			Color = Colors.Border,
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+			BorderStrokePosition = Enum.BorderStrokePosition.Inner,
+		}),
 		Util.padding(18, 20, 20, 20),
 		Util.vlist(14, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Top),
 	})

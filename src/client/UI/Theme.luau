@@ -53,11 +53,6 @@ Theme.Site = "rxiom.pro"
 export type ImageSpec = { Id: number, Size: Vector2, Crop: Rect }
 
 Theme.Images = table.freeze({
-	Logo = table.freeze({
-		Id = 111794354311850,
-		Size = Vector2.new(1254, 1254),
-		Crop = Rect.new(198, 368, 1047, 854),
-	}) :: ImageSpec,
 	-- Kwadrat wokół monety (746x746), żeby ikona miała proporcje 1:1.
 	Coin = table.freeze({
 		Id = 126450260339769,
