@@ -1,7 +1,6 @@
 --!strict
--- Proste ikony rysowane z ramek, żeby nie zależeć od wgrywanych assetów.
+-- Ikony: proste kształty rysowane z ramek oraz grafiki marki (logo RXIOM i moneta RXI).
 
-local CoinImage = require(script.Parent.CoinImage)
 local Theme = require(script.Parent.Theme)
 local Util = require(script.Parent.Util)
 
@@ -60,98 +59,34 @@ local function triangle(frame: Frame, size: number, thickness: number, color: Co
 	end
 end
 
--- Logo RXIOM: pochylone "R" z grafiki marki. Kontur (w pikselach grafiki 1254x1254) wypełniany
--- poziomymi paskami, bo Roblox nie ma kształtów wektorowych ani skosu dla ramek.
-local LOGO_BOUNDS = Rect.new(198, 368, 1047, 854)
-local LOGO_OUTER = {
-	Vector2.new(405, 368),
-	Vector2.new(955, 368),
-	Vector2.new(1000, 375),
-	Vector2.new(1030, 395),
-	Vector2.new(1045, 420),
-	Vector2.new(1047, 445),
-	Vector2.new(1040, 470),
-	Vector2.new(1000, 563),
-	Vector2.new(980, 595),
-	Vector2.new(950, 625),
-	Vector2.new(912, 648),
-	Vector2.new(870, 660),
-	Vector2.new(812, 663),
-	Vector2.new(1000, 854),
-	Vector2.new(781, 854),
-	Vector2.new(617, 663),
-	Vector2.new(445, 663),
-	Vector2.new(378, 821),
-	Vector2.new(198, 821),
-}
-local LOGO_HOLE = {
-	Vector2.new(525, 479),
-	Vector2.new(855, 479),
-	Vector2.new(870, 485),
-	Vector2.new(875, 497),
-	Vector2.new(860, 532),
-	Vector2.new(845, 548),
-	Vector2.new(820, 557),
-	Vector2.new(490, 557),
-}
-
-local function crossings(polygon: { Vector2 }, y: number, out: { number })
-	for i, a in polygon do
-		local b = polygon[i % #polygon + 1]
-		if (a.Y <= y and b.Y > y) or (b.Y <= y and a.Y > y) then
-			table.insert(out, a.X + (y - a.Y) / (b.Y - a.Y) * (b.X - a.X))
-		end
-	end
-end
-
--- Wypełnia wielokąty (reguła parzystości, więc wielokąt w środku drugiego robi dziurę) poziomymi
--- paskami. Współrzędne w `bounds`; `color(t)` dostaje pozycję wiersza od 0 (góra) do 1 (dół).
-local function fillPolygons(
-	parent: GuiObject,
-	polygons: { { Vector2 } },
-	bounds: Rect,
-	rows: number,
-	color: (t: number) -> Color3,
-	zIndex: number?
-)
-	local w, h = bounds.Width, bounds.Height
-	for row = 0, rows - 1 do
-		local t = (row + 0.5) / rows
-		local y = bounds.Min.Y + t * h
-		local xs = {}
-		for _, polygon in polygons do
-			crossings(polygon, y, xs)
-		end
-		table.sort(xs)
-		for i = 1, #xs - 1, 2 do
-			create("Frame", {
-				Position = UDim2.fromScale((xs[i] - bounds.Min.X) / w, row / rows),
-				-- +1 px wysokości, żeby między paskami nie było szpar po skalowaniu.
-				Size = UDim2.new((xs[i + 1] - xs[i]) / w, 0, 1 / rows, 1),
-				BackgroundColor3 = color(t),
-				BorderSizePixel = 0,
-				ZIndex = zIndex or 1,
-				Parent = parent,
-			})
-		end
-	end
-end
-
-Icons.LogoAspect = LOGO_BOUNDS.Width / LOGO_BOUNDS.Height
-
--- `height` to wysokość litery w pikselach; szerokość wynika z proporcji logo.
-function Icons.logo(height: number, order: number?, color: Color3?): Frame
+-- Grafika marki wgrana na Roblox, przycięta do `Crop` (w pikselach oryginału). Przycięcie robi ramka
+-- z ClipsDescendants i powiększony obrazek w środku, więc działa niezależnie od tego, do jakiej
+-- rozdzielczości Roblox przeskalował wgrany plik.
+local function croppedImage(name: string, spec: Theme.ImageSpec, width: number, height: number, order: number?): Frame
 	local frame: Frame = create("Frame", {
-		Name = "LogoIcon",
+		Name = name,
 		BackgroundTransparency = 1,
-		Size = UDim2.fromOffset(math.round(height * Icons.LogoAspect), height),
+		ClipsDescendants = true,
+		Size = UDim2.fromOffset(width, height),
 		LayoutOrder = order or 0,
 	})
-	local fill = color or Colors.Text
-	fillPolygons(frame, { LOGO_OUTER, LOGO_HOLE }, LOGO_BOUNDS, math.max(10, math.ceil(height * 1.5)), function()
-		return fill
-	end)
+	local crop, size = spec.Crop, spec.Size
+	create("ImageLabel", {
+		Name = "Image",
+		BackgroundTransparency = 1,
+		Image = "rbxassetid://" .. spec.Id,
+		Position = UDim2.fromScale(-crop.Min.X / crop.Width, -crop.Min.Y / crop.Height),
+		Size = UDim2.fromScale(size.X / crop.Width, size.Y / crop.Height),
+		Parent = frame,
+	})
 	return frame
+end
+
+Icons.LogoAspect = Theme.Images.Logo.Crop.Width / Theme.Images.Logo.Crop.Height
+
+-- Logo RXIOM (litera "R"); `height` to wysokość litery, szerokość wynika z proporcji.
+function Icons.logo(height: number, order: number?): Frame
+	return croppedImage("LogoIcon", Theme.Images.Logo, math.round(height * Icons.LogoAspect), height, order)
 end
 
 export type Direction = "Down" | "Up" | "Left" | "Right"
@@ -207,72 +142,9 @@ function Icons.star(size: number, color: Color3, order: number?): Frame
 	return frame
 end
 
--- Moneta RXI: srebrny sześciokąt z czarnym środkiem i przechylonym kwadratem (motyw Robloxa).
-local COIN_TILT = math.rad(-15)
-local COIN_BOUNDS = Rect.new(0, 0, 1, 1)
-local SILVER_TOP = Color3.fromHex("F2F2F2")
-local SILVER_BOTTOM = Color3.fromHex("8E8E8E")
-local COIN_FACE = Color3.fromHex("0A0A0A")
-local COIN_MARK = Color3.fromHex("F5F5F5")
-
-local function hexagon(radius: number): { Vector2 }
-	local points = {}
-	for k = 0, 5 do
-		local a = COIN_TILT + math.rad(30 + k * 60)
-		table.insert(points, Vector2.new(0.5 + radius * math.cos(a), 0.5 + radius * math.sin(a)))
-	end
-	return points
-end
-
-local function tiltedSquare(half: number): { Vector2 }
-	local points = {}
-	local a = math.rad(15)
-	for _, corner in { Vector2.new(-1, -1), Vector2.new(1, -1), Vector2.new(1, 1), Vector2.new(-1, 1) } do
-		local x, y = corner.X * half, corner.Y * half
-		table.insert(
-			points,
-			Vector2.new(0.5 + x * math.cos(a) - y * math.sin(a), 0.5 + x * math.sin(a) + y * math.cos(a))
-		)
-	end
-	return points
-end
-
-local COIN_OUTER = hexagon(0.5)
-local COIN_INNER = hexagon(0.37)
-local COIN_SQUARE = tiltedSquare(0.2)
-local COIN_HOLE = tiltedSquare(0.065)
-
--- Zastępcza moneta z ramek, gdy obrazka nie da się wyświetlić.
-local function drawnCoin(parent: GuiObject, size: number)
-	local rows = math.max(12, math.ceil(size * 1.25))
-
-	fillPolygons(parent, { COIN_OUTER }, COIN_BOUNDS, rows, function(t)
-		return SILVER_TOP:Lerp(SILVER_BOTTOM, t)
-	end, 1)
-	fillPolygons(parent, { COIN_INNER }, COIN_BOUNDS, rows, function()
-		return COIN_FACE
-	end, 2)
-	fillPolygons(parent, { COIN_SQUARE, COIN_HOLE }, COIN_BOUNDS, rows, function()
-		return COIN_MARK
-	end, 3)
-end
-
--- Ikona waluty RXI: grafika monety marki.
-function Icons.currency(size: number, order: number?): ImageLabel
-	local image: ImageLabel = create("ImageLabel", {
-		Name = "CurrencyIcon",
-		BackgroundTransparency = 1,
-		Size = UDim2.fromOffset(size, size),
-		ScaleType = Enum.ScaleType.Fit,
-		LayoutOrder = order or 0,
-	})
-	local content = CoinImage.content()
-	if content then
-		image.ImageContent = content
-	else
-		drawnCoin(image, size)
-	end
-	return image
+-- Ikona waluty RXI: moneta z grafiki marki.
+function Icons.currency(size: number, order: number?): Frame
+	return croppedImage("CurrencyIcon", Theme.Images.Coin, size, size, order)
 end
 
 function Icons.dot(size: number, color: Color3, order: number?): Frame
