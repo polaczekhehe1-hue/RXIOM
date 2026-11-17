@@ -138,6 +138,50 @@ end
 
 Icons.LogoAspect = LOGO_BOUNDS.Width / LOGO_BOUNDS.Height
 
+-- Rysuje wielokąty poziomymi paskami po jednym na piksel wysokości, z pozycjami w Scale, więc kształt
+-- skaluje się razem z UI. Dawniej paski miały po pół piksela i +1 px zapasu: po zaokrągleniu przez
+-- Robloxa nachodziły na siebie, zalewały dziurkę "R" i rozjeżdżały krawędzie. Szpary z zaokrągleń
+-- łatają łączniki na styku wierszy, położone tylko tam, gdzie oba wiersze są wypełnione.
+local function rasterize(parent: GuiObject, polygons: { { Vector2 } }, bounds: Rect, rows: number, fill: Color3)
+	local spans: { { number } } = {}
+	for row = 0, rows - 1 do
+		local xs = {}
+		for _, polygon in polygons do
+			crossings(polygon, bounds.Min.Y + (row + 0.5) / rows * bounds.Height, xs)
+		end
+		table.sort(xs)
+		for i = 1, #xs do
+			xs[i] = (xs[i] - bounds.Min.X) / bounds.Width
+		end
+		spans[row + 1] = xs
+	end
+
+	local function strip(x0: number, x1: number, y: number)
+		create("Frame", {
+			Position = UDim2.fromScale(x0, y / rows),
+			Size = UDim2.fromScale(x1 - x0, 1 / rows),
+			BackgroundColor3 = fill,
+			BorderSizePixel = 0,
+			Parent = parent,
+		})
+	end
+
+	for row = 1, rows do
+		local xs, below = spans[row], spans[row + 1]
+		for i = 1, #xs - 1, 2 do
+			strip(xs[i], xs[i + 1], row - 1)
+			if below then
+				for j = 1, #below - 1, 2 do
+					local x0, x1 = math.max(xs[i], below[j]), math.min(xs[i + 1], below[j + 1])
+					if x1 > x0 then
+						strip(x0, x1, row - 0.5)
+					end
+				end
+			end
+		end
+	end
+end
+
 -- `height` to wysokość litery w pikselach; szerokość wynika z proporcji logo.
 function Icons.logo(height: number, order: number?, color: Color3?): Frame
 	local frame: Frame = create("Frame", {
@@ -146,10 +190,7 @@ function Icons.logo(height: number, order: number?, color: Color3?): Frame
 		Size = UDim2.fromOffset(math.round(height * Icons.LogoAspect), height),
 		LayoutOrder = order or 0,
 	})
-	local fill = color or Colors.Text
-	fillPolygons(frame, { LOGO_OUTER, LOGO_HOLE }, LOGO_BOUNDS, math.max(12, math.ceil(height * 2)), function()
-		return fill
-	end)
+	rasterize(frame, { LOGO_OUTER, LOGO_HOLE }, LOGO_BOUNDS, math.max(8, height), color or Colors.Text)
 	return frame
 end
 
