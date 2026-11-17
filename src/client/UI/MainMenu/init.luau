@@ -221,7 +221,7 @@ function MainMenu.mount(): ScreenGui
 		local inset = GuiService.TopbarInset
 		local hasTopbar = inset.Width > 0
 		local chromeHeight = browser.SetInsets(
-			if hasTopbar then inset.Min.X / scale + 8 else 10,
+			if hasTopbar then inset.Min.X / scale + 8 else 0,
 			if hasTopbar then inset.Max.Y / scale else 0
 		)
 		site.Position = UDim2.fromOffset(0, chromeHeight)

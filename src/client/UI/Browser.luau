@@ -10,7 +10,7 @@ local create = Util.create
 local Colors = Theme.Colors
 local Fonts = Theme.Fonts
 
-local MIN_STRIP_HEIGHT = 40
+local STRIP_HEIGHT = 40
 local TAB_HEIGHT = 34
 local TOOLBAR_HEIGHT = 46
 
@@ -53,7 +53,7 @@ end
 function Browser.new(callbacks: Callbacks): Browser
 	local frame: Frame = create("Frame", {
 		Name = "Browser",
-		Size = UDim2.new(1, 0, 0, MIN_STRIP_HEIGHT + TOOLBAR_HEIGHT),
+		Size = UDim2.new(1, 0, 0, STRIP_HEIGHT + TOOLBAR_HEIGHT),
 		BackgroundColor3 = Colors.ChromeStrip,
 		BorderSizePixel = 0,
 	})
@@ -62,11 +62,9 @@ function Browser.new(callbacks: Callbacks): Browser
 	local strip: Frame = create("Frame", {
 		Name = "Tabs",
 		BackgroundTransparency = 1,
-		Size = UDim2.new(1, 0, 0, MIN_STRIP_HEIGHT),
+		Size = UDim2.new(1, 0, 0, STRIP_HEIGHT),
 		Parent = frame,
-	})
-	local stripPadding = Util.padding(0, 0, 0, 10) :: UIPadding
-	stripPadding.Parent = strip
+	}, { Util.padding(0, 0, 0, 10) })
 	local tabs = Util.group("List", 0, Util.hlist(6, Enum.VerticalAlignment.Bottom))
 	tabs.Size = UDim2.fromScale(0, 1)
 	tabs.AutomaticSize = Enum.AutomaticSize.X
@@ -211,11 +209,16 @@ function Browser.new(callbacks: Callbacks): Browser
 			backButton.Active = canBack
 			forwardButton.Active = canForward
 		end,
+		-- Przyciski Robloxa dostają własny pas po lewej przez całą wysokość okna, a karta i pasek
+		-- adresu zaczynają się obok nich. Dzięki temu pasek kart nie musi być tak wysoki jak przyciski.
 		SetInsets = function(left: number, topbarHeight: number): number
-			local stripHeight = math.max(MIN_STRIP_HEIGHT, math.ceil(topbarHeight))
-			strip.Size = UDim2.new(1, 0, 0, stripHeight)
-			stripPadding.PaddingLeft = UDim.new(0, math.max(10, left))
-			local total = stripHeight + TOOLBAR_HEIGHT
+			local gutter = math.max(0, left)
+			local total = math.max(STRIP_HEIGHT + TOOLBAR_HEIGHT, math.ceil(topbarHeight))
+			local stripHeight = total - TOOLBAR_HEIGHT
+			strip.Position = UDim2.fromOffset(gutter, 0)
+			strip.Size = UDim2.new(1, -gutter, 0, stripHeight)
+			toolbar.Position = UDim2.new(0, gutter, 1, 0)
+			toolbar.Size = UDim2.new(1, -gutter, 0, TOOLBAR_HEIGHT)
 			frame.Size = UDim2.new(1, 0, 0, total)
 			return total
 		end,
