@@ -1,6 +1,8 @@
 --!strict
 -- Formatowanie liczb w stylu Axiom (wspólne dla serwera i klienta).
 
+local Config = require(script.Parent.Config)
+
 local Format = {}
 
 -- 14200 -> "14.2K"
@@ -50,7 +52,7 @@ function Format.usd(n: number): string
 end
 
 function Format.rx(n: number): string
-	return Format.decimal(n) .. " RX"
+	return Format.decimal(n) .. " " .. Config.Currency
 end
 
 function Format.percent(n: number): string

@@ -283,7 +283,7 @@ function CoinView.new(onBack: () -> ()): CoinView
 		local s = coin.Stats[tf]
 		ageLabel.Text = Format.age(Market.now() - coin.LaunchedAt)
 		priceStat.Value.Text = "$" .. Format.decimal(coin.Price * Config.UsdPerRx)
-		priceStat.Sub.Text = Format.decimal(coin.Price) .. " RX"
+		priceStat.Sub.Text = Format.decimal(coin.Price) .. " " .. Config.Currency
 		mcStat.Value.Text = Format.usd(coin.MarketCap)
 		if s then
 			mcStat.Sub.Text = Format.percent(s.Change) .. " " .. tf
@@ -294,7 +294,7 @@ function CoinView.new(onBack: () -> ()): CoinView
 			txStat.Sub.Text = `{Format.compact(s.Buys)} / {Format.compact(s.Sells)}`
 		end
 		liqStat.Value.Text = Format.usd(coin.Liquidity)
-		liqStat.Sub.Text = Format.decimal(coin.PoolRx) .. " RX"
+		liqStat.Sub.Text = Format.decimal(coin.PoolRx) .. " " .. Config.Currency
 		holdersStat.Value.Text = Format.compact(coin.Holders)
 	end
 
@@ -367,14 +367,16 @@ function CoinView.new(onBack: () -> ()): CoinView
 		local pnl = sold + value - bought
 		boughtStat.Value.Text = Format.decimal(bought)
 		local entry = entryPrice()
-		boughtStat.Sub.Text = if entry then "avg " .. Format.usd(entry * Config.TotalSupply * Config.UsdPerRx) else "RX"
+		boughtStat.Sub.Text = if entry
+			then "avg " .. Format.usd(entry * Config.TotalSupply * Config.UsdPerRx)
+			else Config.Currency
 		soldStat.Value.Text = Format.decimal(sold)
-		soldStat.Sub.Text = "RX"
+		soldStat.Sub.Text = Config.Currency
 		holdingStat.Value.Text = Format.decimal(value)
 		holdingStat.Sub.Text = Format.compact(tokens) .. " " .. ticker
 		pnlStat.Value.Text = (if pnl > 0 then "+" else "") .. Format.decimal(pnl)
 		pnlStat.Value.TextColor3 = if math.abs(pnl) < 1e-9 then Colors.Text else Util.changeColor(pnl)
-		pnlStat.Sub.Text = if bought > 0 then Format.percent(pnl / bought * 100) else "RX"
+		pnlStat.Sub.Text = if bought > 0 then Format.percent(pnl / bought * 100) else Config.Currency
 	end
 
 	local function describeOrder(order: Types.LimitOrder): (string, string)

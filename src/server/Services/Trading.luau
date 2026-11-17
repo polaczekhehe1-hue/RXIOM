@@ -218,7 +218,7 @@ local function submitTrade(player: Player, request: any): ActionResult
 	if request.Side == "Buy" then
 		local rx: number = request.Amount
 		if rx < Config.MinTradeRx then
-			return fail(`Minimum buy is {Config.MinTradeRx} RX`)
+			return fail(`Minimum buy is {Config.MinTradeRx} {Config.Currency}`)
 		end
 		if rx + fees > profile.Balance + 1e-9 then
 			return fail("Insufficient balance")
@@ -335,7 +335,7 @@ local function placeLimitOrder(player: Player, request: any): ActionResult
 	if request.Side == "Buy" then
 		local rx: number = request.Amount
 		if rx < Config.MinTradeRx then
-			return fail(`Minimum buy is {Config.MinTradeRx} RX`)
+			return fail(`Minimum buy is {Config.MinTradeRx} {Config.Currency}`)
 		end
 		if rx + fees > profile.Balance + 1e-9 then
 			return fail("Insufficient balance")

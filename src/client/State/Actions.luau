@@ -41,7 +41,7 @@ function Actions.buy(ticker: string, rx: number, bracket: Bracket?): boolean
 		return false
 	end
 	if rx < Config.MinTradeRx then
-		Toast.show(`Minimum buy is {Config.MinTradeRx} RX`, "Error")
+		Toast.show(`Minimum buy is {Config.MinTradeRx} {Config.Currency}`, "Error")
 		return false
 	end
 	local s = Settings.State

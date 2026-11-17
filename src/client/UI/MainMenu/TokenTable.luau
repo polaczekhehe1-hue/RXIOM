@@ -5,6 +5,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Coins = require(ReplicatedStorage.Shared.Coins)
+local Config = require(ReplicatedStorage.Shared.Config)
 local Format = require(ReplicatedStorage.Shared.Format)
 local Types = require(ReplicatedStorage.Shared.Types)
 
@@ -116,7 +117,7 @@ local function tokenInfo(cell: Frame, index: number)
 end
 
 local function buyText(amount: number): string
-	return `Buy {Format.decimal(amount)} RX`
+	return `Buy {Format.decimal(amount)} {Config.Currency}`
 end
 
 local function row(def: CoinDef, index: number, openCoin: (string) -> ()): Row

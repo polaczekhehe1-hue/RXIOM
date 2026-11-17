@@ -564,7 +564,7 @@ function TradePanel.new(): TradePanel
 
 		if side == "Buy" then
 			if not value then
-				quoteLabel.Text = `Fee {Config.FeeBps / 100}% + {Format.decimal(fees)} RX network`
+				quoteLabel.Text = `Fee {Config.FeeBps / 100}% + {Format.decimal(fees)} {Config.Currency} network`
 				return
 			end
 			local tokens = Amm.buyQuote(pool, value)
@@ -652,7 +652,10 @@ function TradePanel.new(): TradePanel
 		end
 		local value = amount()
 		if not value then
-			Toast.show(if side == "Buy" then "Enter an amount in RX" else "Enter a percentage to sell", "Error")
+			Toast.show(
+				if side == "Buy" then `Enter an amount in {Config.Currency}` else "Enter a percentage to sell",
+				"Error"
+			)
 			return
 		end
 		local trigger: number? = nil

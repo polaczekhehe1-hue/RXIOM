@@ -48,6 +48,6 @@ Theme.DesignSize = Vector2.new(1600, 820)
 Theme.Site = "rxiom.pro"
 
 -- Waluta w grze (odpowiednik SOL na Axiom).
-Theme.Currency = "RX"
+Theme.Currency = require(game:GetService("ReplicatedStorage").Shared.Config).Currency
 
 return table.freeze(Theme)

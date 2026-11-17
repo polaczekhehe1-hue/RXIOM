@@ -8,6 +8,8 @@ local Config = {
 	UsdPerRx = 150,
 	TotalSupply = 1_000_000_000,
 
+	-- Nazwa waluty widoczna dla graczy.
+	Currency = "RXI",
 	StartingBalance = 10,
 	-- Prowizja od każdej transakcji (1%), pobierana w RX.
 	FeeBps = 100,

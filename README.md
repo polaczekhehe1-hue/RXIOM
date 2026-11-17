@@ -15,12 +15,12 @@ Zapis postępu (DataStore) działa w opublikowanej grze. W Studio trzeba włącz
 
 ## Jak działa handel
 
-- Każdy coin ma pulę płynności `x * y = k` (jak pump.fun). Kupno dodaje RX do puli i podnosi cenę, sprzedaż ją obniża.
+- Każdy coin ma pulę płynności `x * y = k` (jak pump.fun). Kupno dodaje RXI do puli i podnosi cenę, sprzedaż ją obniża.
 - Prowizja 1% od transakcji plus wybrany priority fee i tip.
 - Serwer wykonuje wszystkie transakcje. Klient wysyła oczekiwany wynik, a serwer odrzuca transakcję, jeśli cena uciekła bardziej niż ustawiony slippage.
 - Boty symulują innych traderów, więc ceny, wolumen i wykresy żyją także przy jednym graczu. Przy starcie serwer symuluje ostatnią godzinę historii.
 - Zlecenia **Limit** wykonują się, gdy market cap dojdzie do celu. **Advanced Trading Strategy** dokłada do kupna take profit i stop loss.
-- **Deposit** daje darmowe RX co 5 minut.
+- **Deposit** daje darmowe RXI co 5 minut.
 
 Ustawienia ekonomii są w `src/shared/Config.luau`, a lista coinów w `src/shared/Coins.luau`.
 

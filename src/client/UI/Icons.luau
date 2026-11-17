@@ -103,6 +103,39 @@ local function crossings(polygon: { Vector2 }, y: number, out: { number })
 	end
 end
 
+-- Wypełnia wielokąty (reguła parzystości, więc wielokąt w środku drugiego robi dziurę) poziomymi
+-- paskami. Współrzędne w `bounds`; `color(t)` dostaje pozycję wiersza od 0 (góra) do 1 (dół).
+local function fillPolygons(
+	parent: Frame,
+	polygons: { { Vector2 } },
+	bounds: Rect,
+	rows: number,
+	color: (t: number) -> Color3,
+	zIndex: number?
+)
+	local w, h = bounds.Width, bounds.Height
+	for row = 0, rows - 1 do
+		local t = (row + 0.5) / rows
+		local y = bounds.Min.Y + t * h
+		local xs = {}
+		for _, polygon in polygons do
+			crossings(polygon, y, xs)
+		end
+		table.sort(xs)
+		for i = 1, #xs - 1, 2 do
+			create("Frame", {
+				Position = UDim2.fromScale((xs[i] - bounds.Min.X) / w, row / rows),
+				-- +1 px wysokości, żeby między paskami nie było szpar po skalowaniu.
+				Size = UDim2.new((xs[i + 1] - xs[i]) / w, 0, 1 / rows, 1),
+				BackgroundColor3 = color(t),
+				BorderSizePixel = 0,
+				ZIndex = zIndex or 1,
+				Parent = parent,
+			})
+		end
+	end
+end
+
 Icons.LogoAspect = LOGO_BOUNDS.Width / LOGO_BOUNDS.Height
 
 -- `height` to wysokość litery w pikselach; szerokość wynika z proporcji logo.
@@ -114,25 +147,9 @@ function Icons.logo(height: number, order: number?, color: Color3?): Frame
 		LayoutOrder = order or 0,
 	})
 	local fill = color or Colors.Text
-	local rows = math.max(10, math.ceil(height * 1.5))
-	local w, h = LOGO_BOUNDS.Width, LOGO_BOUNDS.Height
-	for row = 0, rows - 1 do
-		local y = LOGO_BOUNDS.Min.Y + (row + 0.5) / rows * h
-		local xs = {}
-		crossings(LOGO_OUTER, y, xs)
-		crossings(LOGO_HOLE, y, xs)
-		table.sort(xs)
-		for i = 1, #xs - 1, 2 do
-			create("Frame", {
-				Position = UDim2.fromScale((xs[i] - LOGO_BOUNDS.Min.X) / w, row / rows),
-				-- +1 px wysokości, żeby między paskami nie było szpar po skalowaniu.
-				Size = UDim2.new((xs[i + 1] - xs[i]) / w, 0, 1 / rows, 1),
-				BackgroundColor3 = fill,
-				BorderSizePixel = 0,
-				Parent = frame,
-			})
-		end
-	end
+	fillPolygons(frame, { LOGO_OUTER, LOGO_HOLE }, LOGO_BOUNDS, math.max(10, math.ceil(height * 1.5)), function()
+		return fill
+	end)
 	return frame
 end
 
@@ -189,24 +206,53 @@ function Icons.star(size: number, color: Color3, order: number?): Frame
 	return frame
 end
 
--- Ikona waluty w grze (odpowiednik logo SOL).
+-- Moneta RXI: srebrny sześciokąt z czarnym środkiem i przechylonym kwadratem (motyw Robloxa).
+local COIN_TILT = math.rad(-15)
+local COIN_BOUNDS = Rect.new(0, 0, 1, 1)
+local SILVER_TOP = Color3.fromHex("F2F2F2")
+local SILVER_BOTTOM = Color3.fromHex("8E8E8E")
+local COIN_FACE = Color3.fromHex("0A0A0A")
+local COIN_MARK = Color3.fromHex("F5F5F5")
+
+local function hexagon(radius: number): { Vector2 }
+	local points = {}
+	for k = 0, 5 do
+		local a = COIN_TILT + math.rad(30 + k * 60)
+		table.insert(points, Vector2.new(0.5 + radius * math.cos(a), 0.5 + radius * math.sin(a)))
+	end
+	return points
+end
+
+local function tiltedSquare(half: number): { Vector2 }
+	local points = {}
+	local a = math.rad(15)
+	for _, corner in { Vector2.new(-1, -1), Vector2.new(1, -1), Vector2.new(1, 1), Vector2.new(-1, 1) } do
+		local x, y = corner.X * half, corner.Y * half
+		table.insert(
+			points,
+			Vector2.new(0.5 + x * math.cos(a) - y * math.sin(a), 0.5 + x * math.sin(a) + y * math.cos(a))
+		)
+	end
+	return points
+end
+
+local COIN_OUTER = hexagon(0.5)
+local COIN_INNER = hexagon(0.37)
+local COIN_SQUARE = tiltedSquare(0.2)
+local COIN_HOLE = tiltedSquare(0.065)
+
 function Icons.currency(size: number, order: number?): Frame
 	local frame = box("CurrencyIcon", size, order)
-	local t = math.max(2, math.floor(size * 0.18))
-	for i = 0, 2 do
-		local b = create("Frame", {
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromOffset(size / 2, size * (0.22 + i * 0.28)),
-			Size = UDim2.fromOffset(size * 0.9, t),
-			BackgroundColor3 = Color3.new(1, 1, 1),
-			BorderSizePixel = 0,
-			Parent = frame,
-		})
-		create("UIGradient", {
-			Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromHex("8C8C8C")),
-			Parent = b,
-		})
-	end
+	local rows = math.max(12, math.ceil(size * 1.25))
+	fillPolygons(frame, { COIN_OUTER }, COIN_BOUNDS, rows, function(t)
+		return SILVER_TOP:Lerp(SILVER_BOTTOM, t)
+	end, 1)
+	fillPolygons(frame, { COIN_INNER }, COIN_BOUNDS, rows, function()
+		return COIN_FACE
+	end, 2)
+	fillPolygons(frame, { COIN_SQUARE, COIN_HOLE }, COIN_BOUNDS, rows, function()
+		return COIN_MARK
+	end, 3)
 	return frame
 end
 
