@@ -5,6 +5,7 @@
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
+local TextChatService = game:GetService("TextChatService")
 
 local UI = script.Parent
 local Theme = require(UI.Theme)
@@ -25,9 +26,28 @@ local CONTENT_PADDING = 32
 local MainMenu = {}
 
 local function hideDefaultCoreGui()
-	for _, kind in { Enum.CoreGuiType.Backpack, Enum.CoreGuiType.PlayerList, Enum.CoreGuiType.Health } do
-		StarterGui:SetCoreGuiEnabled(kind, false)
+	-- Chat, lista graczy, plecak, emotki, zdrowie.
+	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
+
+	local chatWindow = TextChatService:FindFirstChildOfClass("ChatWindowConfiguration")
+	local chatInput = TextChatService:FindFirstChildOfClass("ChatInputBarConfiguration")
+	if chatWindow then
+		chatWindow.Enabled = false
 	end
+	if chatInput then
+		chatInput.Enabled = false
+	end
+
+	-- SetCore działa dopiero po załadowaniu CoreScripts, więc ponawiamy przez kilka sekund.
+	-- Przycisku menu Robloxa (logo) nie da się ukryć; Roblox go wymaga.
+	task.spawn(function()
+		for _ = 1, 20 do
+			if pcall(StarterGui.SetCore, StarterGui, "TopbarEnabled", false) then
+				return
+			end
+			task.wait(0.5)
+		end
+	end)
 end
 
 function MainMenu.mount(): ScreenGui
