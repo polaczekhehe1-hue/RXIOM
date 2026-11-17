@@ -1,6 +1,6 @@
 --!strict
--- Główny interfejs RXIOM (wzorowany na axiom.trade): górny pasek, strony Discover / coin / Portfolio,
--- dolny pasek i powiadomienia.
+-- Główny interfejs RXIOM: okno przeglądarki z rxiom.pro, a w nim strona z górnym paskiem,
+-- podstronami Discover / coin / Portfolio, dolnym paskiem i powiadomieniami.
 
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
@@ -8,6 +8,7 @@ local StarterGui = game:GetService("StarterGui")
 local TextChatService = game:GetService("TextChatService")
 
 local UI = script.Parent
+local Browser = require(UI.Browser)
 local Theme = require(UI.Theme)
 local Toast = require(UI.Toast)
 local Util = require(UI.Util)
@@ -22,6 +23,8 @@ local TopBar = require(script.TopBar)
 local create = Util.create
 
 local CONTENT_PADDING = 32
+
+type Page = { Name: "Discover" | "Coin" | "Portfolio", Ticker: string? }
 
 local MainMenu = {}
 
@@ -48,6 +51,16 @@ local function hideDefaultCoreGui()
 			task.wait(0.5)
 		end
 	end)
+end
+
+local function pageInfo(page: Page): (string, string)
+	if page.Name == "Coin" then
+		local ticker = page.Ticker or ""
+		return `{ticker} | RXIOM`, "/meme/" .. string.lower(ticker)
+	elseif page.Name == "Portfolio" then
+		return "Portfolio | RXIOM", "/portfolio"
+	end
+	return "RXIOM", "/discover"
 end
 
 function MainMenu.mount(): ScreenGui
@@ -77,43 +90,95 @@ function MainMenu.mount(): ScreenGui
 	})
 	local uiScale: UIScale = create("UIScale", { Parent = root })
 
+	-- Strona rxiom.pro pod paskami przeglądarki.
+	local site: Frame = create("Frame", {
+		Name = "Site",
+		BackgroundTransparency = 1,
+		Parent = root,
+	})
 	local content: Frame = create("Frame", {
 		Name = "Content",
 		BackgroundTransparency = 1,
 		Position = UDim2.fromOffset(0, TopBar.Height),
 		Size = UDim2.new(1, 0, 1, -(TopBar.Height + BottomBar.Height)),
-		Parent = root,
+		Parent = site,
 	}, { Util.padding(16, CONTENT_PADDING, 16, CONTENT_PADDING) })
 
 	local pages: { [string]: GuiObject } = {}
+	local history: { Page } = {}
+	local position = 0
+	local browser: Browser.Browser
 	local topBar: TopBar.TopBar
 	local coinView: CoinView.CoinView
 	local portfolioPage: PortfolioPage.PortfolioPage
 
-	local function show(name: string)
-		for pageName, page in pages do
-			page.Visible = pageName == name
+	local function render(page: Page)
+		for name, frame in pages do
+			frame.Visible = name == page.Name
 		end
-		topBar.SetActive(if name == "Portfolio" then "Portfolio" else "Discover")
+		if page.Name == "Coin" and page.Ticker then
+			coinView.Open(page.Ticker)
+		elseif page.Name == "Portfolio" then
+			portfolioPage.Refresh()
+		end
+		topBar.SetActive(if page.Name == "Portfolio" then "Portfolio" else "Discover")
+		local title, path = pageInfo(page)
+		browser.SetPage(title, path)
+		browser.SetHistory(position > 1, position < #history)
+	end
+
+	local function navigate(page: Page)
+		local current = history[position]
+		if current and current.Name == page.Name and current.Ticker == page.Ticker then
+			render(page)
+			return
+		end
+		-- Nowa strona ucina historię "dalej", jak w przeglądarce.
+		for i = #history, position + 1, -1 do
+			history[i] = nil
+		end
+		table.insert(history, page)
+		position = #history
+		render(page)
 	end
 
 	local function openCoin(ticker: string)
-		show("Coin")
-		coinView.Open(ticker)
+		navigate({ Name = "Coin", Ticker = ticker })
 	end
 
 	local navigation: TopBar.Navigation = {
 		Discover = function()
-			show("Discover")
+			navigate({ Name = "Discover" })
 		end,
 		Portfolio = function()
-			show("Portfolio")
-			portfolioPage.Refresh()
+			navigate({ Name = "Portfolio" })
 		end,
 	}
 
+	browser = Browser.new({
+		Back = function()
+			if position > 1 then
+				position -= 1
+				render(history[position])
+			end
+		end,
+		Forward = function()
+			if position < #history then
+				position += 1
+				render(history[position])
+			end
+		end,
+		Refresh = function()
+			local page = history[position]
+			if page then
+				render(page)
+			end
+		end,
+	})
+	browser.Frame.Parent = root
+
 	topBar = TopBar.new(navigation)
-	topBar.Frame.Parent = root
+	topBar.Frame.Parent = site
 
 	-- Discover: filtry + tabela coinów
 	local discover: Frame = create("Frame", {
@@ -137,10 +202,10 @@ function MainMenu.mount(): ScreenGui
 	portfolioPage.Frame.Parent = content
 	pages.Portfolio = portfolioPage.Frame
 
-	BottomBar.new().Frame.Parent = root
-	Toast.mount(root, BottomBar.Height + 16)
+	BottomBar.new().Frame.Parent = site
+	Toast.mount(site, BottomBar.Height + 16)
 
-	show("Discover")
+	navigation.Discover()
 
 	local function relayout()
 		local viewport = gui.AbsoluteSize
@@ -152,8 +217,15 @@ function MainMenu.mount(): ScreenGui
 		uiScale.Scale = scale
 		root.Size = UDim2.fromOffset(viewport.X / scale, viewport.Y / scale)
 
+		-- Pasek kart omija przyciski Robloxa w lewym górnym rogu.
 		local inset = GuiService.TopbarInset
-		topBar.SetInsets(inset.Min.X / scale + 8, math.max(0, viewport.X - inset.Max.X) / scale)
+		local hasTopbar = inset.Width > 0
+		local chromeHeight = browser.SetInsets(
+			if hasTopbar then inset.Min.X / scale + 8 else 10,
+			if hasTopbar then inset.Max.Y / scale else 0
+		)
+		site.Position = UDim2.fromOffset(0, chromeHeight)
+		site.Size = UDim2.new(1, 0, 1, -chromeHeight)
 	end
 
 	gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(relayout)

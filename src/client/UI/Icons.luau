@@ -59,10 +59,80 @@ local function triangle(frame: Frame, size: number, thickness: number, color: Co
 	end
 end
 
--- Logo RXIOM: trójkąt jak w logo Axiom.
-function Icons.logo(size: number, order: number?): Frame
-	local frame = box("LogoIcon", size, order)
-	triangle(frame, size, math.max(3, size * 0.14), Colors.Text, true)
+-- Logo RXIOM: pochylone "R" z grafiki marki. Kontur (w pikselach grafiki 1254x1254) wypełniany
+-- poziomymi paskami, bo Roblox nie ma kształtów wektorowych ani skosu dla ramek.
+local LOGO_BOUNDS = Rect.new(198, 368, 1047, 854)
+local LOGO_OUTER = {
+	Vector2.new(405, 368),
+	Vector2.new(955, 368),
+	Vector2.new(1000, 375),
+	Vector2.new(1030, 395),
+	Vector2.new(1045, 420),
+	Vector2.new(1047, 445),
+	Vector2.new(1040, 470),
+	Vector2.new(1000, 563),
+	Vector2.new(980, 595),
+	Vector2.new(950, 625),
+	Vector2.new(912, 648),
+	Vector2.new(870, 660),
+	Vector2.new(812, 663),
+	Vector2.new(1000, 854),
+	Vector2.new(781, 854),
+	Vector2.new(617, 663),
+	Vector2.new(445, 663),
+	Vector2.new(378, 821),
+	Vector2.new(198, 821),
+}
+local LOGO_HOLE = {
+	Vector2.new(525, 479),
+	Vector2.new(855, 479),
+	Vector2.new(870, 485),
+	Vector2.new(875, 497),
+	Vector2.new(860, 532),
+	Vector2.new(845, 548),
+	Vector2.new(820, 557),
+	Vector2.new(490, 557),
+}
+
+local function crossings(polygon: { Vector2 }, y: number, out: { number })
+	for i, a in polygon do
+		local b = polygon[i % #polygon + 1]
+		if (a.Y <= y and b.Y > y) or (b.Y <= y and a.Y > y) then
+			table.insert(out, a.X + (y - a.Y) / (b.Y - a.Y) * (b.X - a.X))
+		end
+	end
+end
+
+Icons.LogoAspect = LOGO_BOUNDS.Width / LOGO_BOUNDS.Height
+
+-- `height` to wysokość litery w pikselach; szerokość wynika z proporcji logo.
+function Icons.logo(height: number, order: number?, color: Color3?): Frame
+	local frame: Frame = create("Frame", {
+		Name = "LogoIcon",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromOffset(math.round(height * Icons.LogoAspect), height),
+		LayoutOrder = order or 0,
+	})
+	local fill = color or Colors.Text
+	local rows = math.max(10, math.ceil(height * 1.5))
+	local w, h = LOGO_BOUNDS.Width, LOGO_BOUNDS.Height
+	for row = 0, rows - 1 do
+		local y = LOGO_BOUNDS.Min.Y + (row + 0.5) / rows * h
+		local xs = {}
+		crossings(LOGO_OUTER, y, xs)
+		crossings(LOGO_HOLE, y, xs)
+		table.sort(xs)
+		for i = 1, #xs - 1, 2 do
+			create("Frame", {
+				Position = UDim2.fromScale((xs[i] - LOGO_BOUNDS.Min.X) / w, row / rows),
+				-- +1 px wysokości, żeby między paskami nie było szpar po skalowaniu.
+				Size = UDim2.new((xs[i + 1] - xs[i]) / w, 0, 1 / rows, 1),
+				BackgroundColor3 = fill,
+				BorderSizePixel = 0,
+				Parent = frame,
+			})
+		end
+	end
 	return frame
 end
 
@@ -133,7 +203,7 @@ function Icons.currency(size: number, order: number?): Frame
 			Parent = frame,
 		})
 		create("UIGradient", {
-			Color = ColorSequence.new(Color3.fromHex("9945FF"), Color3.fromHex("14F195")),
+			Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromHex("8C8C8C")),
 			Parent = b,
 		})
 	end
@@ -240,6 +310,65 @@ function Icons.close(size: number, color: Color3, order: number?): Frame
 	local frame = box("CloseIcon", size, order)
 	line(frame, Vector2.new(size * 0.2, size * 0.2), Vector2.new(size * 0.8, size * 0.8), 1.5, color)
 	line(frame, Vector2.new(size * 0.8, size * 0.2), Vector2.new(size * 0.2, size * 0.8), 1.5, color)
+	return frame
+end
+
+-- Strzałka (wstecz / dalej w pasku przeglądarki).
+function Icons.arrow(size: number, color: Color3, direction: "Left" | "Right", order: number?): Frame
+	local frame = box("ArrowIcon", size, order)
+	local s = size
+	local tip = if direction == "Left" then s * 0.15 else s * 0.85
+	local back = if direction == "Left" then s * 0.85 else s * 0.15
+	local wing = s * 0.5
+	line(frame, Vector2.new(back, s * 0.5), Vector2.new(tip, s * 0.5), 1.8, color)
+	line(frame, Vector2.new(tip, s * 0.5), Vector2.new(wing, s * 0.15), 1.8, color)
+	line(frame, Vector2.new(tip, s * 0.5), Vector2.new(wing, s * 0.85), 1.8, color)
+	return frame
+end
+
+-- Odśwież: okrąg z przerwą i grotem w prawym górnym rogu.
+function Icons.refresh(size: number, color: Color3, background: Color3, order: number?): Frame
+	local frame = box("RefreshIcon", size, order)
+	local inset = size * 0.1
+	outline(frame, Vector2.new(inset, inset), Vector2.new(size - inset * 2, size - inset * 2), color, size, 1.8)
+	create("Frame", {
+		Position = UDim2.fromOffset(size * 0.55, 0),
+		Size = UDim2.fromOffset(size * 0.45, size * 0.42),
+		BackgroundColor3 = background,
+		BorderSizePixel = 0,
+		ZIndex = 2,
+		Parent = frame,
+	})
+	local tip = Vector2.new(size * 0.88, size * 0.42)
+	local arrowFrame = create("Frame", {
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 3,
+		Parent = frame,
+	})
+	line(arrowFrame, tip, Vector2.new(size * 0.88, size * 0.12), 1.8, color)
+	line(arrowFrame, tip, Vector2.new(size * 0.6, size * 0.42), 1.8, color)
+	return frame
+end
+
+-- Kłódka przed adresem strony.
+function Icons.lock(size: number, color: Color3, order: number?): Frame
+	local frame = box("LockIcon", size, order)
+	outline(frame, Vector2.new(size * 0.28, size * 0.05), Vector2.new(size * 0.44, size * 0.55), color, size, 1.5)
+	create("Frame", {
+		Position = UDim2.fromOffset(size * 0.15, size * 0.42),
+		Size = UDim2.fromOffset(size * 0.7, size * 0.55),
+		BackgroundColor3 = color,
+		BorderSizePixel = 0,
+		Parent = frame,
+	}, { Util.corner(2) })
+	return frame
+end
+
+function Icons.plus(size: number, color: Color3, order: number?): Frame
+	local frame = box("PlusIcon", size, order)
+	line(frame, Vector2.new(size * 0.5, size * 0.15), Vector2.new(size * 0.5, size * 0.85), 1.8, color)
+	line(frame, Vector2.new(size * 0.15, size * 0.5), Vector2.new(size * 0.85, size * 0.5), 1.8, color)
 	return frame
 end
 

@@ -29,8 +29,8 @@ local Fonts = Theme.Fonts
 type Tab = string
 
 local TABS: { Tab } = { "Market", "Limit", "Adv." }
-local BUY_TEXT = Color3.fromHex("0B0C11")
-local INPUT_BG = Color3.fromHex("101117")
+local BUY_TEXT = Colors.OnPrimary
+local INPUT_BG = Color3.fromHex("101010")
 
 export type TradePanel = {
 	Frame: Frame,
@@ -211,11 +211,11 @@ function TradePanel.new(): TradePanel
 				Position = UDim2.fromScale(0.5, 0),
 				AutomaticSize = Enum.AutomaticSize.XY,
 				Size = UDim2.new(),
-				BackgroundColor3 = Color3.fromHex("2A2312"),
+				BackgroundColor3 = Colors.BadgeBackground,
 				Text = "NEW",
 				TextSize = 10,
 				FontFace = Fonts.Bold,
-				TextColor3 = Color3.fromHex("E6B54A"),
+				TextColor3 = Colors.BadgeText,
 				Parent = button,
 			}, { Util.corner(4), Util.padding(1, 5) })
 		end
@@ -347,7 +347,7 @@ function TradePanel.new(): TradePanel
 		AnchorPoint = Vector2.new(1, 1),
 		Position = UDim2.fromScale(1, 1),
 		Size = UDim2.new(0, 46, 0.5, -1),
-		BackgroundColor3 = Colors.Primary,
+		BackgroundColor3 = Colors.Border,
 		BackgroundTransparency = 1,
 		Text = "",
 		Parent = amountBox,
@@ -418,7 +418,7 @@ function TradePanel.new(): TradePanel
 	end
 	local slipButton, slipLabel = settingItem(1, Icons.slippage(13, Colors.TextMuted), Colors.Text)
 	local gasButton, gasLabel = settingItem(2, Icons.gas(13, Colors.TextMuted), Colors.Text)
-	local tipButton, tipLabel = settingItem(3, Icons.coin(14, Colors.Yellow), Colors.Yellow)
+	local tipButton, tipLabel = settingItem(3, Icons.coin(14, Colors.TextMuted), Colors.Text)
 	local tipWarning = Icons.warning(14, Colors.Yellow, 3)
 	tipWarning.Parent = tipButton
 	local mevButton, mevLabel = settingItem(4, Icons.shield(13, Colors.TextMuted), Colors.Text)
@@ -448,7 +448,7 @@ function TradePanel.new(): TradePanel
 	local checkbox = create("Frame", {
 		Name = "Checkbox",
 		Size = UDim2.fromOffset(22, 22),
-		BackgroundColor3 = Colors.Green,
+		BackgroundColor3 = Colors.Primary,
 		BackgroundTransparency = 1,
 		LayoutOrder = 1,
 		Parent = advancedRow,
@@ -512,7 +512,7 @@ function TradePanel.new(): TradePanel
 		Name = "Submit",
 		AutoButtonColor = false,
 		Size = UDim2.new(1, 0, 0, 54),
-		BackgroundColor3 = Colors.Green,
+		BackgroundColor3 = Colors.Primary,
 		Text = "Buy",
 		TextSize = 19,
 		FontFace = Fonts.Bold,
@@ -610,14 +610,14 @@ function TradePanel.new(): TradePanel
 	local function refreshSubmit()
 		local label = if tab == "Limit" then `{side} Limit` else side
 		submitButton.Text = if busy then "Sending..." else `{label} {ticker or ""}`
-		local color = if side == "Buy" then Colors.Green else Colors.Red
+		local color = if side == "Buy" then Colors.Primary else Colors.Red
 		submitButton.BackgroundColor3 = color
 		submitButton.TextColor3 = if side == "Buy" then BUY_TEXT else Colors.Text
 		submitButton.BackgroundTransparency = if busy then 0.4 else 0
 	end
 
 	local function refreshLayout()
-		buyButton.BackgroundColor3 = Colors.Green
+		buyButton.BackgroundColor3 = Colors.Primary
 		buyButton.BackgroundTransparency = if side == "Buy" then 0 else 1
 		buyButton.TextColor3 = if side == "Buy" then BUY_TEXT else Colors.Text
 		sellButton.BackgroundColor3 = Colors.Red

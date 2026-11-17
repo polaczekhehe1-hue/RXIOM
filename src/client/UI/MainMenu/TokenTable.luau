@@ -192,7 +192,7 @@ local function row(def: CoinDef, index: number, openCoin: (string) -> ()): Row
 		Text = buyText(Settings.State.QuickBuy),
 		TextSize = 16,
 		FontFace = Fonts.SemiBold,
-		TextColor3 = Colors.Text,
+		TextColor3 = Colors.OnPrimary,
 		ZIndex = 2,
 		Parent = cells[7],
 	}, { Util.round() })

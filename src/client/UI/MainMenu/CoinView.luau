@@ -339,8 +339,8 @@ function CoinView.new(onBack: () -> ()): CoinView
 				local mine = trade.IsPlayer and trade.Trader == me
 				cells[6].Text = if mine then trade.Trader .. " (you)" else trade.Trader
 				cells[6].TextColor3 = if mine
-					then Colors.Primary
-					elseif trade.IsPlayer then Colors.Yellow
+					then Colors.Text
+					elseif trade.IsPlayer then Color3.fromHex("BDBDBD")
 					else Colors.TextMuted
 			end
 		end

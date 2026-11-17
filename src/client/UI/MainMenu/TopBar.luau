@@ -42,7 +42,7 @@ local function logo(onClick: () -> ()): TextButton
 		Text = "",
 		LayoutOrder = 1,
 	}, { Util.hlist(10) })
-	Icons.logo(24, 1).Parent = button
+	Icons.logo(22, 1).Parent = button
 	Util.text({ Text = "RXIOM", Size = 26, Font = Fonts.Bold, Order = 2, Parent = button })
 	button.Activated:Connect(onClick)
 	return button
@@ -133,7 +133,6 @@ end
 export type TopBar = {
 	Frame: Frame,
 	SetActive: (name: string) -> (),
-	SetInsets: (left: number, right: number) -> (),
 }
 
 function TopBar.new(nav: Navigation): TopBar
@@ -152,9 +151,7 @@ function TopBar.new(nav: Navigation): TopBar
 		BackgroundTransparency = 1,
 		Size = UDim2.fromScale(1, 1),
 		Parent = frame,
-	})
-	local padding = Util.padding(0, 24) :: UIPadding
-	padding.Parent = inner
+	}, { Util.padding(0, 24) })
 
 	local left = Util.group("Left", 0, Util.hlist(32))
 	left.AnchorPoint = Vector2.new(0, 0.5)
@@ -169,7 +166,7 @@ function TopBar.new(nav: Navigation): TopBar
 	local function setActive(name: string)
 		active = name
 		for itemName, b in navButtons do
-			Util.tween(b, { TextColor3 = if itemName == active then Colors.Primary else Colors.Text })
+			Util.tween(b, { TextColor3 = if itemName == active then Colors.Text else Colors.TextMuted })
 		end
 	end
 	for i, name in NAV_ITEMS do
@@ -183,7 +180,7 @@ function TopBar.new(nav: Navigation): TopBar
 			Text = name,
 			TextSize = 17,
 			FontFace = Fonts.SemiBold,
-			TextColor3 = if name == active then Colors.Primary else Colors.Text,
+			TextColor3 = if name == active then Colors.Text else Colors.TextMuted,
 			LayoutOrder = i,
 			Parent = navFrame,
 		}, { Util.padding(0, 12), Util.corner(8) })
@@ -226,7 +223,7 @@ function TopBar.new(nav: Navigation): TopBar
 	deposit.Text = "Deposit"
 	deposit.TextSize = 16
 	deposit.FontFace = Fonts.SemiBold
-	deposit.TextColor3 = Colors.Text
+	deposit.TextColor3 = Colors.OnPrimary
 	Util.padding(0, 18).Parent = deposit
 	Util.hoverBackground(deposit, Colors.Primary, Colors.PrimaryHover)
 	deposit.Parent = right
@@ -263,11 +260,6 @@ function TopBar.new(nav: Navigation): TopBar
 	return {
 		Frame = frame,
 		SetActive = setActive,
-		-- Odsuwa treść od przycisków Robloxa (menu, czat) w lewym górnym rogu.
-		SetInsets = function(leftInset: number, rightInset: number)
-			padding.PaddingLeft = UDim.new(0, math.max(24, leftInset))
-			padding.PaddingRight = UDim.new(0, math.max(24, rightInset))
-		end,
 	}
 end
 

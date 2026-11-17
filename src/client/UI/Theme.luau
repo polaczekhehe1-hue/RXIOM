@@ -1,26 +1,36 @@
 --!strict
--- Kolory i fonty wzorowane na axiom.trade (ciemny motyw).
+-- Czarno-biały motyw RXIOM. Zielony i czerwony zostają tylko dla danych (zmiany cen, kupno/sprzedaż).
 
 local Theme = {}
 
 Theme.Colors = table.freeze({
-	Background = Color3.fromHex("06070B"),
-	Surface = Color3.fromHex("0B0C11"),
-	SurfaceHover = Color3.fromHex("12131A"),
-	Elevated = Color3.fromHex("16171E"),
-	Border = Color3.fromHex("1E2029"),
-	Divider = Color3.fromHex("15161C"),
+	Background = Color3.fromHex("050505"),
+	Surface = Color3.fromHex("0B0B0B"),
+	SurfaceHover = Color3.fromHex("151515"),
+	Elevated = Color3.fromHex("181818"),
+	Border = Color3.fromHex("242424"),
+	Divider = Color3.fromHex("161616"),
 
-	Text = Color3.fromHex("FCFCFC"),
-	TextMuted = Color3.fromHex("8B8E9E"),
-	TextDim = Color3.fromHex("5C5F6E"),
+	Text = Color3.fromHex("FFFFFF"),
+	TextMuted = Color3.fromHex("8C8C8C"),
+	TextDim = Color3.fromHex("575757"),
 
-	Primary = Color3.fromHex("526FFF"),
-	PrimaryHover = Color3.fromHex("6A83FF"),
+	-- Akcent: białe przyciski z czarnym tekstem.
+	Primary = Color3.fromHex("FFFFFF"),
+	PrimaryHover = Color3.fromHex("D6D6D6"),
+	OnPrimary = Color3.fromHex("050505"),
+
+	BadgeBackground = Color3.fromHex("242424"),
+	BadgeText = Color3.fromHex("FFFFFF"),
+
+	-- Okno "przeglądarki" z rxiom.pro.
+	ChromeStrip = Color3.fromHex("000000"),
+	ChromeBar = Color3.fromHex("121212"),
+	ChromeField = Color3.fromHex("1E1E1E"),
+
 	Green = Color3.fromHex("2FE3AC"),
 	Red = Color3.fromHex("EC397A"),
 	Yellow = Color3.fromHex("F5C542"),
-	Orange = Color3.fromHex("F7931A"),
 })
 
 local FAMILY = "rbxasset://fonts/families/BuilderSans.json"
@@ -33,7 +43,9 @@ Theme.Fonts = table.freeze({
 })
 
 -- Rozdzielczość, pod którą projektowany jest layout; UI skaluje się względem niej.
-Theme.DesignSize = Vector2.new(1600, 860)
+Theme.DesignSize = Vector2.new(1600, 940)
+
+Theme.Site = "rxiom.pro"
 
 -- Waluta w grze (odpowiednik SOL na Axiom).
 Theme.Currency = "RX"

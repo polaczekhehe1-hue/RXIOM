@@ -43,7 +43,7 @@ local function segmented(
 	local buttons: { TextButton } = {}
 	local function refresh()
 		for _, b in buttons do
-			Util.tween(b, { TextColor3 = if isActive(b.Name) then Colors.Primary else Colors.Text })
+			Util.tween(b, { TextColor3 = if isActive(b.Name) then Colors.Text else Colors.TextMuted })
 		end
 	end
 	for i, label in labels do
@@ -56,7 +56,7 @@ local function segmented(
 			Text = label,
 			TextSize = size,
 			FontFace = Fonts.Medium,
-			TextColor3 = if isActive(label) then Colors.Primary else Colors.Text,
+			TextColor3 = if isActive(label) then Colors.Text else Colors.TextMuted,
 			LayoutOrder = i,
 			Parent = parent,
 		}, { Util.padding(0, 8) })
@@ -78,11 +78,11 @@ local function badge(text: string): TextLabel
 		Position = UDim2.new(0.5, 0, 0, 2),
 		AutomaticSize = Enum.AutomaticSize.XY,
 		Size = UDim2.new(),
-		BackgroundColor3 = Color3.fromHex("2A2312"),
+		BackgroundColor3 = Colors.BadgeBackground,
 		Text = text,
 		TextSize = 10,
 		FontFace = Fonts.Bold,
-		TextColor3 = Color3.fromHex("E6B54A"),
+		TextColor3 = Colors.BadgeText,
 	}, { Util.corner(4), Util.padding(1, 5) })
 end
 

@@ -253,7 +253,7 @@ function PortfolioPage.new(openCoin: (ticker: string) -> ()): PortfolioPage
 		Text = `Claim {Config.Faucet.Amount} RX`,
 		TextSize = 16,
 		FontFace = Fonts.SemiBold,
-		TextColor3 = Colors.Text,
+		TextColor3 = Colors.OnPrimary,
 		Parent = frame,
 	}, { Util.round(), Util.padding(0, 18) })
 	Util.hoverBackground(deposit, Colors.Primary, Colors.PrimaryHover)
