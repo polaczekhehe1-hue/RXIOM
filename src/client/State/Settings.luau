@@ -21,7 +21,7 @@ export type State = {
 
 local Settings = {}
 Settings.State = {
-	Timeframe = "5m",
+	Timeframe = "24h",
 	Sort = "Top",
 	Search = "",
 	QuickBuy = 0.1,

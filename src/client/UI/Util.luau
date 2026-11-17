@@ -178,7 +178,12 @@ function Util.divider(vertical: boolean?, color: Color3?): Frame
 end
 
 function Util.changeColor(n: number): Color3
-	return if n >= 0 then Theme.Colors.Green else Theme.Colors.Red
+	if n > 0 then
+		return Theme.Colors.Green
+	elseif n < 0 then
+		return Theme.Colors.Red
+	end
+	return Theme.Colors.TextMuted
 end
 
 return table.freeze(Util)

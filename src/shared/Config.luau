@@ -28,8 +28,8 @@ local Config = {
 	-- Ile ostatnich transakcji gracza na coinie pamiętać (znaczniki na wykresie).
 	MaxFills = 30,
 	TradeFeedLength = 30,
-	-- Ile historii rynku symulować przy starcie serwera, żeby wykresy i statystyki nie były puste.
-	WarmupSeconds = 3600,
+	-- Ile historii rynku symulować przy starcie serwera (pełna doba dla zmian i wolumenu 24h).
+	WarmupSeconds = 86400,
 
 	Faucet = { Amount = 1, Cooldown = 300 },
 

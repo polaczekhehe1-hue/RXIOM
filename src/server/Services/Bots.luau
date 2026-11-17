@@ -28,20 +28,7 @@ local function walletName(): string
 	return part(4) .. "..." .. part(4)
 end
 
-local function stepCoin(ticker: string, state: Market.CoinState, dt: number, t: number)
-	local s = sentiment[ticker] or 0
-	s = s * (1 - 0.06 * dt) + rng:NextNumber(-1, 1) * 0.12 * math.sqrt(dt)
-	-- Rzadkie gwałtowne zwroty: pompa albo dump.
-	if rng:NextNumber() < dt / 240 then
-		s += if rng:NextNumber() < 0.55 then 0.35 else -0.35
-	end
-	s = math.clamp(s, -0.45, 0.45)
-	sentiment[ticker] = s
-
-	if rng:NextNumber() >= state.Def.Activity * dt then
-		return
-	end
-
+local function trade(ticker: string, state: Market.CoinState, s: number, t: number)
 	local pool = state.Pool
 	local reversion = math.clamp(0.2 * math.log(state.InitialPrice / Amm.price(pool)), -0.35, 0.35)
 	local buyChance = math.clamp(0.5 + s + reversion, 0.08, 0.92)
@@ -57,6 +44,24 @@ local function stepCoin(ticker: string, state: Market.CoinState, dt: number, t: 
 	end
 end
 
+local function stepCoin(ticker: string, state: Market.CoinState, dt: number, t: number)
+	local s = sentiment[ticker] or 0
+	s = s * math.max(0, 1 - 0.06 * dt) + rng:NextNumber(-1, 1) * 0.12 * math.sqrt(dt)
+	-- Rzadkie gwałtowne zwroty: pompa albo dump.
+	if rng:NextNumber() < dt / 240 then
+		s += if rng:NextNumber() < 0.55 then 0.35 else -0.35
+	end
+	s = math.clamp(s, -0.45, 0.45)
+	sentiment[ticker] = s
+
+	-- Oczekiwana liczba transakcji w kroku; przy dłuższym kroku (rozgrzewka) bywa ich kilka.
+	local expected = state.Def.Activity * dt
+	local count = math.floor(expected) + (if rng:NextNumber() < expected % 1 then 1 else 0)
+	for _ = 1, count do
+		trade(ticker, state, s, t)
+	end
+end
+
 function Bots.step(dt: number, t: number)
 	for ticker, state in Market.all() do
 		if t >= state.LaunchedAt then
@@ -65,16 +70,21 @@ function Bots.step(dt: number, t: number)
 	end
 end
 
--- Symuluje ostatnią godzinę handlu (lub krócej, jeśli coin jest młodszy).
+-- Symuluje ostatnie Config.WarmupSeconds handlu (lub krócej, jeśli coin jest młodszy), żeby zmiana
+-- i wolumen 24h były pełne od startu serwera. Historia starsza niż zakres świec liczona jest
+-- grubszym krokiem, bo trafia już tylko do statystyk.
 function Bots.warmup()
 	local finish = Market.now()
-	local start = finish - Config.WarmupSeconds
-	local step = 0.5
+	local detailedFrom = finish - Config.CandleHistory * Config.CandleSeconds
 	Market.setBroadcasting(false)
-	local t = start
+	local t = finish - Config.WarmupSeconds
 	while t < finish do
+		local detailed = t >= detailedFrom
+		local step = if detailed then 0.5 else 2
 		Bots.step(step, t)
-		Market.tick(t)
+		if detailed then
+			Market.tick(t)
+		end
 		t += step
 	end
 	Market.setBroadcasting(true)
