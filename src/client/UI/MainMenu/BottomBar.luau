@@ -4,11 +4,17 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Coins = require(ReplicatedStorage.Shared.Coins)
+local Format = require(ReplicatedStorage.Shared.Format)
+
+local State = script.Parent.Parent.Parent.State
+local Market = require(State.Market)
+local Portfolio = require(State.Portfolio)
+
 local UI = script.Parent.Parent
 local Icons = require(UI.Icons)
 local Theme = require(UI.Theme)
 local Util = require(UI.Util)
-local Coins = require(ReplicatedStorage.Shared.Coins)
 
 local create = Util.create
 local Colors = Theme.Colors
@@ -54,27 +60,41 @@ local function wallet(): Frame
 	}, { Util.round(), Util.stroke(Colors.Border), Util.padding(0, 10), Util.hlist(6) })
 	Util.text({ Text = "1", Size = 14, Order = 1, Parent = frame })
 	Icons.currency(12, 2).Parent = frame
-	Util.text({ Text = "0", Size = 14, Order = 3, Parent = frame })
+	local balance = Util.text({ Text = "0", Size = 14, Order = 3, Parent = frame })
 	Icons.chevronDown(10, Colors.TextMuted, 4).Parent = frame
+	local function update()
+		balance.Text = Format.decimal(Portfolio.State.Balance)
+	end
+	Portfolio.Changed:Connect(update)
+	update()
 	return frame
 end
 
 local function priceTicker(): Frame
 	local frame = Util.group("Prices", 4, Util.hlist(16))
-	for i = 1, math.min(TICKER_COUNT, #Coins) do
-		local coin = Coins[i]
-		local item = Util.group(coin.Ticker, i, Util.hlist(6))
+	local labels: { [string]: TextLabel } = {}
+	for i = 1, math.min(TICKER_COUNT, #Coins.List) do
+		local def = Coins.List[i]
+		local item = Util.group(def.Ticker, i, Util.hlist(6))
 		item.Parent = frame
-		Icons.dot(10, coin.Color, 1).Parent = item
-		Util.text({
-			Text = "$" .. Util.compact(coin.MarketCap / 1000),
+		Icons.dot(10, def.Color, 1).Parent = item
+		labels[def.Ticker] = Util.text({
+			Text = "-",
 			Size = 14,
 			Font = Fonts.Medium,
-			Color = coin.Color,
+			Color = def.Color,
 			Order = 2,
 			Parent = item,
 		})
 	end
+	Market.Changed:Connect(function()
+		for ticker, label in labels do
+			local coin = Market.coin(ticker)
+			if coin then
+				label.Text = Format.usd(coin.MarketCap)
+			end
+		end
+	end)
 	return frame
 end
 

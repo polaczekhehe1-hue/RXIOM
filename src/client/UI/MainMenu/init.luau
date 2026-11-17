@@ -1,5 +1,6 @@
 --!strict
--- Główne menu RXIOM (wzorowane na zakładce Discover z axiom.trade).
+-- Główny interfejs RXIOM (wzorowany na axiom.trade): górny pasek, strony Discover / coin / Portfolio,
+-- dolny pasek i powiadomienia.
 
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
@@ -7,10 +8,13 @@ local StarterGui = game:GetService("StarterGui")
 
 local UI = script.Parent
 local Theme = require(UI.Theme)
+local Toast = require(UI.Toast)
 local Util = require(UI.Util)
 
 local BottomBar = require(script.BottomBar)
+local CoinView = require(script.CoinView)
 local FilterBar = require(script.FilterBar)
+local PortfolioPage = require(script.PortfolioPage)
 local TokenTable = require(script.TokenTable)
 local TopBar = require(script.TopBar)
 
@@ -53,27 +57,70 @@ function MainMenu.mount(): ScreenGui
 	})
 	local uiScale: UIScale = create("UIScale", { Parent = root })
 
-	local topBar = TopBar.new()
-	topBar.Frame.Parent = root
-
-	local tokenTable = TokenTable.new()
-	local filterBar = FilterBar.new(tokenTable.SetQuickBuy)
-
-	create("Frame", {
+	local content: Frame = create("Frame", {
 		Name = "Content",
 		BackgroundTransparency = 1,
 		Position = UDim2.fromOffset(0, TopBar.Height),
 		Size = UDim2.new(1, 0, 1, -(TopBar.Height + BottomBar.Height)),
 		Parent = root,
-	}, {
-		Util.padding(0, CONTENT_PADDING, 16, CONTENT_PADDING),
-		filterBar.Frame,
-		tokenTable.Frame,
+	}, { Util.padding(16, CONTENT_PADDING, 16, CONTENT_PADDING) })
+
+	local pages: { [string]: GuiObject } = {}
+	local topBar: TopBar.TopBar
+	local coinView: CoinView.CoinView
+	local portfolioPage: PortfolioPage.PortfolioPage
+
+	local function show(name: string)
+		for pageName, page in pages do
+			page.Visible = pageName == name
+		end
+		topBar.SetActive(if name == "Portfolio" then "Portfolio" else "Discover")
+	end
+
+	local function openCoin(ticker: string)
+		show("Coin")
+		coinView.Open(ticker)
+	end
+
+	local navigation: TopBar.Navigation = {
+		Discover = function()
+			show("Discover")
+		end,
+		Portfolio = function()
+			show("Portfolio")
+			portfolioPage.Refresh()
+		end,
+	}
+
+	topBar = TopBar.new(navigation)
+	topBar.Frame.Parent = root
+
+	-- Discover: filtry + tabela coinów
+	local discover: Frame = create("Frame", {
+		Name = "Discover",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		Parent = content,
 	})
+	FilterBar.new().Frame.Parent = discover
+	local tokenTable = TokenTable.new(openCoin)
 	tokenTable.Frame.Position = UDim2.fromOffset(0, FilterBar.Height)
 	tokenTable.Frame.Size = UDim2.new(1, 0, 1, -FilterBar.Height)
+	tokenTable.Frame.Parent = discover
+	pages.Discover = discover
+
+	coinView = CoinView.new(navigation.Discover)
+	coinView.Frame.Parent = content
+	pages.Coin = coinView.Frame
+
+	portfolioPage = PortfolioPage.new(openCoin)
+	portfolioPage.Frame.Parent = content
+	pages.Portfolio = portfolioPage.Frame
 
 	BottomBar.new().Frame.Parent = root
+	Toast.mount(root, BottomBar.Height + 16)
+
+	show("Discover")
 
 	local function relayout()
 		local viewport = gui.AbsoluteSize

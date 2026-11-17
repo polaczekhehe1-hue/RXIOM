@@ -1,8 +1,10 @@
 --!strict
 -- Małe helpery do budowania UI w kodzie.
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
+local Format = require(ReplicatedStorage.Shared.Format)
 local Theme = require(script.Parent.Theme)
 
 local Util = {}
@@ -130,24 +132,53 @@ function Util.hoverBackground(button: GuiButton, normal: Color3, hover: Color3, 
 	end)
 end
 
--- Skraca liczby w stylu Axiom: 14200 -> "14.2K".
-function Util.compact(n: number): string
-	local abs = math.abs(n)
-	local suffix, div = "", 1
-	if abs >= 1e9 then
-		suffix, div = "B", 1e9
-	elseif abs >= 1e6 then
-		suffix, div = "M", 1e6
-	elseif abs >= 1e3 then
-		suffix, div = "K", 1e3
-	end
-	local v = n / div
-	local s = if math.abs(v) >= 100 or div == 1 then string.format("%d", math.round(v)) else string.format("%.3g", v)
-	return s .. suffix
+Util.compact = Format.compact
+Util.percent = Format.percent
+
+export type LabelProps = {
+	Name: string?,
+	Text: string,
+	Size: number?,
+	Font: Font?,
+	Color: Color3?,
+	AlignX: Enum.TextXAlignment?,
+	Position: UDim2?,
+	FrameSize: UDim2?,
+	AnchorPoint: Vector2?,
+	Order: number?,
+	Parent: Instance?,
+}
+
+-- TextLabel o stałym rozmiarze (domyślnie wypełnia rodzica), np. komórka tabeli.
+function Util.label(p: LabelProps): TextLabel
+	return create("TextLabel", {
+		Name = p.Name or "Label",
+		BackgroundTransparency = 1,
+		AnchorPoint = p.AnchorPoint or Vector2.zero,
+		Position = p.Position or UDim2.new(),
+		Size = p.FrameSize or UDim2.fromScale(1, 1),
+		Text = p.Text,
+		TextSize = p.Size or 14,
+		FontFace = p.Font or Theme.Fonts.Medium,
+		TextColor3 = p.Color or Theme.Colors.Text,
+		TextXAlignment = p.AlignX or Enum.TextXAlignment.Left,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		LayoutOrder = p.Order or 0,
+		Parent = p.Parent,
+	})
 end
 
-function Util.percent(n: number): string
-	return string.format("%s%.2f%%", if n > 0 then "+" else "", n)
+function Util.divider(vertical: boolean?, color: Color3?): Frame
+	return create("Frame", {
+		Name = "Divider",
+		Size = if vertical then UDim2.new(0, 1, 1, 0) else UDim2.new(1, 0, 0, 1),
+		BackgroundColor3 = color or Theme.Colors.Border,
+		BorderSizePixel = 0,
+	})
+end
+
+function Util.changeColor(n: number): Color3
+	return if n >= 0 then Theme.Colors.Green else Theme.Colors.Red
 end
 
 return table.freeze(Util)

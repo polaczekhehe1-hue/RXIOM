@@ -1,0 +1,488 @@
+--!strict
+-- Strona coina: nagłówek ze statystykami, wykres świecowy, ostatnie transakcje,
+-- panel kupna/sprzedaży, pozycja gracza i jego otwarte zlecenia.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Coins = require(ReplicatedStorage.Shared.Coins)
+local Config = require(ReplicatedStorage.Shared.Config)
+local Format = require(ReplicatedStorage.Shared.Format)
+local Types = require(ReplicatedStorage.Shared.Types)
+
+local State = script.Parent.Parent.Parent.State
+local Actions = require(State.Actions)
+local Market = require(State.Market)
+local Portfolio = require(State.Portfolio)
+local Settings = require(State.Settings)
+
+local UI = script.Parent.Parent
+local Chart = require(UI.Chart)
+local Icons = require(UI.Icons)
+local Theme = require(UI.Theme)
+local Util = require(UI.Util)
+local TradePanel = require(script.Parent.TradePanel)
+
+local create = Util.create
+local Colors = Theme.Colors
+local Fonts = Theme.Fonts
+
+local HEADER_HEIGHT = 80
+local PANEL_WIDTH = 390
+local GAP = 16
+
+export type CoinView = {
+	Frame: Frame,
+	Open: (ticker: string) -> (),
+}
+
+local CoinView = {}
+
+type Stat = { Value: TextLabel, Sub: TextLabel }
+
+local function stat(parent: Instance, title: string, order: number): Stat
+	local group = Util.group(title, order, Util.vlist(2))
+	group.Parent = parent
+	Util.text({ Text = title, Size = 13, Color = Colors.TextMuted, Order = 1, Parent = group })
+	local value = Util.text({ Text = "-", Size = 18, Font = Fonts.SemiBold, Order = 2, Parent = group })
+	local sub = Util.text({ Text = "", Size = 13, Color = Colors.TextMuted, Order = 3, Parent = group })
+	return { Value = value, Sub = sub }
+end
+
+local function card(name: string, order: number): Frame
+	return create("Frame", {
+		Name = name,
+		Size = UDim2.fromScale(1, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundColor3 = Colors.Surface,
+		LayoutOrder = order,
+	}, {
+		Util.corner(8),
+		Util.stroke(Colors.Border),
+		Util.padding(14, 16),
+		Util.vlist(10, Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Top),
+	})
+end
+
+-- Kolumny listy transakcji: tytuł i szerokość (ułamek).
+local TRADE_COLUMNS: { { Title: string, Width: number } } = {
+	{ Title = "Age", Width = 0.1 },
+	{ Title = "Type", Width = 0.1 },
+	{ Title = "MC", Width = 0.16 },
+	{ Title = "Amount", Width = 0.18 },
+	{ Title = "Tokens", Width = 0.18 },
+	{ Title = "Trader", Width = 0.28 },
+}
+
+type TradeRow = { Frame: Frame, Cells: { TextLabel } }
+
+local function tradeRow(parent: Instance, order: number, isHeader: boolean): TradeRow
+	local row: Frame = create("Frame", {
+		Name = if isHeader then "Header" else "Row" .. order,
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, 0, 0, if isHeader then 34 else 30),
+		LayoutOrder = order,
+		Parent = parent,
+	}, { Util.padding(0, 16) })
+	local cells: { TextLabel } = {}
+	local x = 0
+	for i, column in TRADE_COLUMNS do
+		local title, width = column.Title, column.Width
+		cells[i] = Util.label({
+			Text = if isHeader then title else "",
+			Size = if isHeader then 13 else 14,
+			Color = if isHeader then Colors.TextMuted else Colors.Text,
+			Position = UDim2.fromScale(x, 0),
+			FrameSize = UDim2.fromScale(width, 1),
+			Parent = row,
+		})
+		x += width
+	end
+	return { Frame = row, Cells = cells }
+end
+
+function CoinView.new(onBack: () -> ()): CoinView
+	local ticker: string? = nil
+
+	local frame: Frame = create("Frame", {
+		Name = "CoinView",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		Visible = false,
+	})
+
+	-- Nagłówek
+	local header = create("Frame", {
+		Name = "Header",
+		Size = UDim2.new(1, 0, 0, HEADER_HEIGHT),
+		BackgroundColor3 = Colors.Surface,
+		Parent = frame,
+	}, { Util.corner(8), Util.stroke(Colors.Border), Util.padding(0, 16) })
+	local headerLeft = Util.group("Identity", 0, Util.hlist(14))
+	headerLeft.AnchorPoint = Vector2.new(0, 0.5)
+	headerLeft.Position = UDim2.fromScale(0, 0.5)
+	headerLeft.Parent = header
+	local backButton: TextButton = create("TextButton", {
+		Name = "Back",
+		AutoButtonColor = false,
+		Size = UDim2.fromOffset(36, 36),
+		BackgroundColor3 = Colors.Elevated,
+		Text = "",
+		LayoutOrder = 1,
+		Parent = headerLeft,
+	}, { Util.round() })
+	local backIcon = Icons.chevron(18, Colors.Text, "Left")
+	backIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+	backIcon.Position = UDim2.fromScale(0.5, 0.5)
+	backIcon.Parent = backButton
+	Util.hoverBackground(backButton, Colors.Elevated, Colors.Border)
+	backButton.Activated:Connect(onBack)
+
+	local iconSlot = create("Frame", {
+		Name = "IconSlot",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromOffset(48, 48),
+		LayoutOrder = 2,
+		Parent = headerLeft,
+	})
+	local names = Util.group("Names", 3, Util.vlist(4))
+	names.Parent = headerLeft
+	local titleRow = Util.group("Title", 1, Util.hlist(8, Enum.VerticalAlignment.Bottom))
+	titleRow.Parent = names
+	local tickerLabel = Util.text({ Text = "", Size = 22, Font = Fonts.Bold, Order = 1, Parent = titleRow })
+	local nameLabel = Util.text({ Text = "", Size = 16, Color = Colors.TextMuted, Order = 2, Parent = titleRow })
+	local ageLabel =
+		Util.text({ Text = "", Size = 14, Font = Fonts.SemiBold, Color = Colors.Green, Order = 2, Parent = names })
+
+	local stats = Util.group("Stats", 0, Util.hlist(36, nil, Enum.HorizontalAlignment.Right))
+	stats.AnchorPoint = Vector2.new(1, 0.5)
+	stats.Position = UDim2.fromScale(1, 0.5)
+	stats.Parent = header
+	local priceStat = stat(stats, "Price", 1)
+	local mcStat = stat(stats, "Market Cap", 2)
+	local liqStat = stat(stats, "Liquidity", 3)
+	local volStat = stat(stats, "Volume", 4)
+	local txStat = stat(stats, "TXNS", 5)
+	local holdersStat = stat(stats, "Holders", 6)
+
+	-- Lewa kolumna: wykres i transakcje
+	local left = create("Frame", {
+		Name = "Left",
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(0, HEADER_HEIGHT + GAP),
+		Size = UDim2.new(1, -(PANEL_WIDTH + GAP), 1, -(HEADER_HEIGHT + GAP)),
+		Parent = frame,
+	})
+	local chart = Chart.new(Config.CandleHistory)
+	chart.Frame.Size = UDim2.new(1, 0, 0.6, -GAP / 2)
+	chart.Frame.Parent = left
+	local chartLegend = Util.label({
+		Text = `{Config.CandleSeconds}s candles · Market cap (USD)`,
+		Size = 12,
+		Color = Colors.TextDim,
+		Position = UDim2.fromOffset(14, 4),
+		FrameSize = UDim2.new(1, -28, 0, 14),
+		Parent = chart.Frame,
+	})
+	chartLegend.ZIndex = 5
+
+	local tradesCard = create("Frame", {
+		Name = "Trades",
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.fromScale(0, 1),
+		Size = UDim2.new(1, 0, 0.4, -GAP / 2),
+		BackgroundColor3 = Colors.Surface,
+		ClipsDescendants = true,
+		Parent = left,
+	}, { Util.corner(8), Util.stroke(Colors.Border) })
+	tradeRow(tradesCard, 0, true)
+	local tradesDivider = Util.divider()
+	tradesDivider.Position = UDim2.fromOffset(0, 34)
+	tradesDivider.Parent = tradesCard
+	local tradesList: ScrollingFrame = create("ScrollingFrame", {
+		Name = "List",
+		Position = UDim2.fromOffset(0, 35),
+		Size = UDim2.new(1, 0, 1, -35),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		CanvasSize = UDim2.new(),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		ScrollBarThickness = 5,
+		ScrollBarImageColor3 = Colors.Border,
+		Parent = tradesCard,
+	}, { Util.vlist(0, nil, Enum.VerticalAlignment.Top) })
+	local tradeRows: { TradeRow } = {}
+	for i = 1, Config.TradeFeedLength do
+		tradeRows[i] = tradeRow(tradesList, i, false)
+	end
+
+	-- Prawa kolumna: panel, pozycja, zlecenia
+	local right: ScrollingFrame = create("ScrollingFrame", {
+		Name = "Right",
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, 0, 0, HEADER_HEIGHT + GAP),
+		Size = UDim2.new(0, PANEL_WIDTH, 1, -(HEADER_HEIGHT + GAP)),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		CanvasSize = UDim2.new(),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		ScrollBarThickness = 4,
+		ScrollBarImageColor3 = Colors.Border,
+		ScrollingDirection = Enum.ScrollingDirection.Y,
+		Parent = frame,
+	}, { Util.vlist(GAP, Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Top), Util.padding(0, 8, 8, 0) })
+	local panel = TradePanel.new()
+	panel.Frame.LayoutOrder = 1
+	panel.Frame.Parent = right
+
+	local positionCard = card("Position", 2)
+	positionCard.Parent = right
+	Util.text({ Text = "Your position", Size = 15, Font = Fonts.SemiBold, Order = 1, Parent = positionCard })
+	local positionGrid = create("Frame", {
+		Name = "Grid",
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, 0, 0, 44),
+		LayoutOrder = 2,
+		Parent = positionCard,
+	}, {
+		create("UIGridLayout", {
+			CellSize = UDim2.new(0.25, -6, 1, 0),
+			CellPadding = UDim2.fromOffset(8, 0),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}),
+	})
+	local function positionStat(title: string, order: number): Stat
+		local cell = create("Frame", {
+			Name = title,
+			BackgroundTransparency = 1,
+			LayoutOrder = order,
+			Parent = positionGrid,
+		}, { Util.vlist(2, Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Top) })
+		Util.text({ Text = title, Size = 12, Color = Colors.TextMuted, Order = 1, Parent = cell })
+		local value = Util.text({ Text = "0", Size = 15, Font = Fonts.SemiBold, Order = 2, Parent = cell })
+		local sub = Util.text({ Text = "", Size = 12, Color = Colors.TextMuted, Order = 3, Parent = cell })
+		return { Value = value, Sub = sub }
+	end
+	local boughtStat = positionStat("Bought", 1)
+	local soldStat = positionStat("Sold", 2)
+	local holdingStat = positionStat("Holding", 3)
+	local pnlStat = positionStat("PnL", 4)
+
+	local ordersCard = card("Orders", 3)
+	ordersCard.Parent = right
+	local ordersTitle =
+		Util.text({ Text = "Open orders", Size = 15, Font = Fonts.SemiBold, Order = 1, Parent = ordersCard })
+	local ordersList = create("Frame", {
+		Name = "List",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		LayoutOrder = 2,
+		Parent = ordersCard,
+	}, { Util.vlist(8, Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Top) })
+
+	------------------------------------------------------------------
+
+	local function refreshHeader()
+		local coin = if ticker then Market.coin(ticker) else nil
+		if not coin then
+			return
+		end
+		local tf = Settings.State.Timeframe
+		local s = coin.Stats[tf]
+		ageLabel.Text = Format.age(Market.now() - coin.LaunchedAt)
+		priceStat.Value.Text = "$" .. Format.decimal(coin.Price * Config.UsdPerRx)
+		priceStat.Sub.Text = Format.decimal(coin.Price) .. " RX"
+		mcStat.Value.Text = Format.usd(coin.MarketCap)
+		if s then
+			mcStat.Sub.Text = Format.percent(s.Change) .. " " .. tf
+			mcStat.Sub.TextColor3 = Util.changeColor(s.Change)
+			volStat.Value.Text = Format.usd(s.Volume)
+			volStat.Sub.Text = tf
+			txStat.Value.Text = Format.compact(s.Buys + s.Sells)
+			txStat.Sub.Text = `{Format.compact(s.Buys)} / {Format.compact(s.Sells)}`
+		end
+		liqStat.Value.Text = Format.usd(coin.Liquidity)
+		liqStat.Sub.Text = Format.decimal(coin.PoolRx) .. " RX"
+		holdersStat.Value.Text = Format.compact(coin.Holders)
+	end
+
+	local function refreshChart()
+		if not ticker then
+			return
+		end
+		local candles = Market.candles(ticker)
+		chart.Set(candles or {}, Config.TotalSupply * Config.UsdPerRx)
+	end
+
+	local function refreshTrades()
+		if not ticker then
+			return
+		end
+		local trades = Market.trades(ticker)
+		local now = Market.now()
+		local me = Players.LocalPlayer.DisplayName
+		for i, row in tradeRows do
+			local trade = trades[i]
+			row.Frame.Visible = trade ~= nil
+			if trade then
+				local color = if trade.Side == "Buy" then Colors.Green else Colors.Red
+				local cells = row.Cells
+				cells[1].Text = Format.age(now - trade.Time)
+				cells[1].TextColor3 = Colors.TextMuted
+				cells[2].Text = trade.Side
+				cells[2].TextColor3 = color
+				cells[3].Text = Format.usd(trade.MarketCap)
+				cells[4].Text = Format.rx(trade.Rx)
+				cells[4].TextColor3 = color
+				cells[5].Text = Format.compact(trade.Tokens)
+				local mine = trade.IsPlayer and trade.Trader == me
+				cells[6].Text = if mine then trade.Trader .. " (you)" else trade.Trader
+				cells[6].TextColor3 = if mine
+					then Colors.Primary
+					elseif trade.IsPlayer then Colors.Yellow
+					else Colors.TextMuted
+			end
+		end
+	end
+
+	local function refreshPosition()
+		if not ticker then
+			return
+		end
+		local coin = Market.coin(ticker)
+		local p = Portfolio.position(ticker)
+		local tokens = Portfolio.totalTokens(ticker)
+		local value = if coin then tokens * coin.Price else 0
+		local bought = if p then p.BoughtRx else 0
+		local sold = if p then p.SoldRx else 0
+		local pnl = sold + value - bought
+		boughtStat.Value.Text = Format.decimal(bought)
+		boughtStat.Sub.Text = "RX"
+		soldStat.Value.Text = Format.decimal(sold)
+		soldStat.Sub.Text = "RX"
+		holdingStat.Value.Text = Format.decimal(value)
+		holdingStat.Sub.Text = Format.compact(tokens) .. " " .. ticker
+		pnlStat.Value.Text = (if pnl > 0 then "+" else "") .. Format.decimal(pnl)
+		pnlStat.Value.TextColor3 = if math.abs(pnl) < 1e-9 then Colors.Text else Util.changeColor(pnl)
+		pnlStat.Sub.Text = if bought > 0 then Format.percent(pnl / bought * 100) else "RX"
+	end
+
+	local function describeOrder(order: Types.LimitOrder): (string, string)
+		local title = if order.Side == "Buy"
+			then `Buy {Format.rx(order.Rx)}`
+			else `Sell {Format.compact(order.Tokens)} {order.Ticker}`
+		local condition
+		if order.Above and order.Below then
+			condition = `TP {Format.usd(order.Above)}  ·  SL {Format.usd(order.Below)}`
+		elseif order.Above then
+			condition = `when MC rises to {Format.usd(order.Above)}`
+		else
+			condition = `when MC falls to {Format.usd(order.Below or 0)}`
+		end
+		return title, condition
+	end
+
+	local function refreshOrders()
+		for _, child in ordersList:GetChildren() do
+			if child:IsA("Frame") then
+				child:Destroy()
+			end
+		end
+		local list: { Types.LimitOrder } = if ticker then Portfolio.orders(ticker) else {}
+		ordersCard.Visible = #list > 0
+		ordersTitle.Text = `Open orders ({#list})`
+		for i, order in list do
+			local title, condition = describeOrder(order)
+			local row = create("Frame", {
+				Name = "Order" .. order.Id,
+				BackgroundColor3 = Colors.Background,
+				Size = UDim2.new(1, 0, 0, 48),
+				LayoutOrder = i,
+				Parent = ordersList,
+			}, { Util.corner(6), Util.padding(0, 12) })
+			Util.label({
+				Text = title,
+				Size = 14,
+				Font = Fonts.SemiBold,
+				Color = if order.Side == "Buy" then Colors.Green else Colors.Red,
+				Position = UDim2.fromOffset(0, 6),
+				FrameSize = UDim2.new(1, -36, 0, 18),
+				Parent = row,
+			})
+			Util.label({
+				Text = condition,
+				Size = 13,
+				Color = Colors.TextMuted,
+				Position = UDim2.fromOffset(0, 25),
+				FrameSize = UDim2.new(1, -36, 0, 16),
+				Parent = row,
+			})
+			local cancel: TextButton = create("TextButton", {
+				Name = "Cancel",
+				AutoButtonColor = false,
+				AnchorPoint = Vector2.new(1, 0.5),
+				Position = UDim2.fromScale(1, 0.5),
+				Size = UDim2.fromOffset(28, 28),
+				BackgroundColor3 = Colors.Elevated,
+				Text = "",
+				Parent = row,
+			}, { Util.round() })
+			local x = Icons.close(12, Colors.TextMuted)
+			x.AnchorPoint = Vector2.new(0.5, 0.5)
+			x.Position = UDim2.fromScale(0.5, 0.5)
+			x.Parent = cancel
+			Util.hoverBackground(cancel, Colors.Elevated, Colors.Border)
+			cancel.Activated:Connect(function()
+				Actions.cancelOrder(order.Id)
+			end)
+		end
+	end
+
+	Market.Changed:Connect(function()
+		if frame.Visible then
+			refreshHeader()
+			refreshTrades()
+			refreshPosition()
+		end
+	end)
+	Market.CandlesChanged:Connect(function(changed: string)
+		if frame.Visible and changed == ticker then
+			refreshChart()
+		end
+	end)
+	Portfolio.Changed:Connect(function()
+		refreshPosition()
+		refreshOrders()
+	end)
+	Settings.Changed:Connect(function(key: string)
+		if key == "Timeframe" then
+			refreshHeader()
+		end
+	end)
+
+	return {
+		Frame = frame,
+		Open = function(newTicker: string)
+			local def = Coins.ByTicker[newTicker]
+			if not def then
+				return
+			end
+			ticker = newTicker
+			tickerLabel.Text = def.Ticker
+			nameLabel.Text = def.Name
+			for _, child in iconSlot:GetChildren() do
+				child:Destroy()
+			end
+			Icons.token(def.Color, def.Ticker, 48).Parent = iconSlot
+			panel.SetCoin(newTicker)
+			refreshHeader()
+			refreshChart()
+			refreshTrades()
+			refreshPosition()
+			refreshOrders()
+		end,
+	}
+end
+
+return CoinView

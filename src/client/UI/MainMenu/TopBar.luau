@@ -1,11 +1,21 @@
 --!strict
--- Górny pasek: logo, nawigacja, wyszukiwarka, Deposit, portfel, avatar.
+-- Górny pasek: logo, nawigacja, wyszukiwarka, Deposit (faucet), portfel, avatar.
 
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+
+local Format = require(ReplicatedStorage.Shared.Format)
+
+local State = script.Parent.Parent.Parent.State
+local Actions = require(State.Actions)
+local Portfolio = require(State.Portfolio)
+local Settings = require(State.Settings)
 
 local UI = script.Parent.Parent
 local Icons = require(UI.Icons)
 local Theme = require(UI.Theme)
+local Toast = require(UI.Toast)
 local Util = require(UI.Util)
 
 local create = Util.create
@@ -14,48 +24,28 @@ local Fonts = Theme.Fonts
 
 local NAV_ITEMS = { "Discover", "Pulse", "Trackers", "Perpetuals", "Predictions", "Portfolio", "Rewards" }
 
+export type Navigation = {
+	Discover: () -> (),
+	Portfolio: () -> (),
+}
+
 local TopBar = {}
 TopBar.Height = 64
 
-local function logo(): Frame
-	local frame = Util.group("Logo", 1, Util.hlist(10))
-	Icons.logo(24, 1).Parent = frame
-	Util.text({ Text = "RXIOM", Size = 26, Font = Fonts.Bold, Order = 2, Parent = frame })
-	return frame
-end
-
-local function nav(): Frame
-	local frame = Util.group("Nav", 2, Util.hlist(4))
-	local buttons: { TextButton } = {}
-
-	local function setActive(active: TextButton)
-		for _, b in buttons do
-			Util.tween(b, { TextColor3 = if b == active then Colors.Primary else Colors.Text })
-		end
-	end
-
-	for i, name in NAV_ITEMS do
-		local button: TextButton = create("TextButton", {
-			Name = name,
-			AutoButtonColor = false,
-			AutomaticSize = Enum.AutomaticSize.X,
-			Size = UDim2.fromOffset(0, 36),
-			BackgroundColor3 = Colors.Elevated,
-			BackgroundTransparency = 1,
-			Text = name,
-			TextSize = 17,
-			FontFace = Fonts.SemiBold,
-			TextColor3 = if i == 1 then Colors.Primary else Colors.Text,
-			LayoutOrder = i,
-			Parent = frame,
-		}, { Util.padding(0, 12), Util.corner(8) })
-		Util.hoverBackground(button, Colors.Elevated, Colors.Elevated, 1)
-		button.Activated:Connect(function()
-			setActive(button)
-		end)
-		table.insert(buttons, button)
-	end
-	return frame
+local function logo(onClick: () -> ()): TextButton
+	local button: TextButton = create("TextButton", {
+		Name = "Logo",
+		AutoButtonColor = false,
+		AutomaticSize = Enum.AutomaticSize.XY,
+		Size = UDim2.new(),
+		BackgroundTransparency = 1,
+		Text = "",
+		LayoutOrder = 1,
+	}, { Util.hlist(10) })
+	Icons.logo(24, 1).Parent = button
+	Util.text({ Text = "RXIOM", Size = 26, Font = Fonts.Bold, Order = 2, Parent = button })
+	button.Activated:Connect(onClick)
+	return button
 end
 
 local function searchBox(): (Frame, TextBox)
@@ -118,39 +108,6 @@ local function pillButton(name: string, order: number, width: number?): TextButt
 	}, { Util.round() })
 end
 
-local function depositButton(): TextButton
-	local button = pillButton("Deposit", 2)
-	button.BackgroundColor3 = Colors.Primary
-	button.Text = "Deposit"
-	button.TextSize = 16
-	button.FontFace = Fonts.SemiBold
-	button.TextColor3 = Colors.Text
-	Util.padding(0, 18).Parent = button
-	Util.hoverBackground(button, Colors.Primary, Colors.PrimaryHover)
-	return button
-end
-
-local function favoritesButton(): TextButton
-	local button = pillButton("Favorites", 3, 40)
-	local star = Icons.star(18, Colors.Text)
-	star.AnchorPoint = Vector2.new(0.5, 0.5)
-	star.Position = UDim2.fromScale(0.5, 0.5)
-	star.Parent = button
-	Util.hoverBackground(button, Colors.Elevated, Colors.Border)
-	return button
-end
-
-local function walletButton(): (TextButton, TextLabel)
-	local button = pillButton("Wallet", 4)
-	Util.padding(0, 14).Parent = button
-	Util.hlist(8).Parent = button
-	Icons.currency(16, 1).Parent = button
-	local balance = Util.text({ Text = "0", Size = 17, Font = Fonts.SemiBold, Order = 2, Parent = button })
-	Icons.chevronDown(12, Colors.TextMuted, 3).Parent = button
-	Util.hoverBackground(button, Colors.Elevated, Colors.Border)
-	return button, balance
-end
-
 local function avatar(): ImageLabel
 	local image: ImageLabel = create("ImageLabel", {
 		Name = "Avatar",
@@ -159,11 +116,10 @@ local function avatar(): ImageLabel
 		LayoutOrder = 5,
 	}, { Util.round() })
 	task.spawn(function()
-		local player = Players.LocalPlayer
 		local ok, content = pcall(
 			Players.GetUserThumbnailAsync,
 			Players,
-			player.UserId,
+			Players.LocalPlayer.UserId,
 			Enum.ThumbnailType.HeadShot,
 			Enum.ThumbnailSize.Size100x100
 		)
@@ -176,27 +132,21 @@ end
 
 export type TopBar = {
 	Frame: Frame,
-	Search: TextBox,
-	Balance: TextLabel,
+	SetActive: (name: string) -> (),
 	SetInsets: (left: number, right: number) -> (),
 }
 
-function TopBar.new(): TopBar
+function TopBar.new(nav: Navigation): TopBar
 	local frame: Frame = create("Frame", {
 		Name = "TopBar",
 		Size = UDim2.new(1, 0, 0, TopBar.Height),
 		BackgroundColor3 = Colors.Background,
 		BorderSizePixel = 0,
 	})
-	create("Frame", {
-		Name = "Divider",
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.fromScale(0, 1),
-		Size = UDim2.new(1, 0, 0, 1),
-		BackgroundColor3 = Colors.Border,
-		BorderSizePixel = 0,
-		Parent = frame,
-	})
+	local divider = Util.divider()
+	divider.AnchorPoint = Vector2.new(0, 1)
+	divider.Position = UDim2.fromScale(0, 1)
+	divider.Parent = frame
 	local inner: Frame = create("Frame", {
 		Name = "Inner",
 		BackgroundTransparency = 1,
@@ -210,25 +160,109 @@ function TopBar.new(): TopBar
 	left.AnchorPoint = Vector2.new(0, 0.5)
 	left.Position = UDim2.fromScale(0, 0.5)
 	left.Parent = inner
-	logo().Parent = left
-	nav().Parent = left
+	logo(nav.Discover).Parent = left
+
+	local navFrame = Util.group("Nav", 2, Util.hlist(4))
+	navFrame.Parent = left
+	local navButtons: { [string]: TextButton } = {}
+	local active = "Discover"
+	local function setActive(name: string)
+		active = name
+		for itemName, b in navButtons do
+			Util.tween(b, { TextColor3 = if itemName == active then Colors.Primary else Colors.Text })
+		end
+	end
+	for i, name in NAV_ITEMS do
+		local button: TextButton = create("TextButton", {
+			Name = name,
+			AutoButtonColor = false,
+			AutomaticSize = Enum.AutomaticSize.X,
+			Size = UDim2.fromOffset(0, 36),
+			BackgroundColor3 = Colors.Elevated,
+			BackgroundTransparency = 1,
+			Text = name,
+			TextSize = 17,
+			FontFace = Fonts.SemiBold,
+			TextColor3 = if name == active then Colors.Primary else Colors.Text,
+			LayoutOrder = i,
+			Parent = navFrame,
+		}, { Util.padding(0, 12), Util.corner(8) })
+		Util.hoverBackground(button, Colors.Elevated, Colors.Elevated, 1)
+		button.Activated:Connect(function()
+			if name == "Discover" then
+				nav.Discover()
+			elseif name == "Portfolio" then
+				nav.Portfolio()
+			else
+				Toast.show(`{name} is coming soon`, "Info")
+			end
+		end)
+		navButtons[name] = button
+	end
 
 	local right = Util.group("Right", 0, Util.hlist(12, nil, Enum.HorizontalAlignment.Right))
 	right.AnchorPoint = Vector2.new(1, 0.5)
 	right.Position = UDim2.fromScale(1, 0.5)
 	right.Parent = inner
+
 	local search, input = searchBox()
 	search.Parent = right
-	depositButton().Parent = right
-	favoritesButton().Parent = right
-	local wallet, balance = walletButton()
+	input:GetPropertyChangedSignal("Text"):Connect(function()
+		Settings.set("Search", input.Text)
+		if input.Text ~= "" and active ~= "Discover" then
+			nav.Discover()
+		end
+	end)
+	UserInputService.InputBegan:Connect(function(io, processed)
+		if not processed and io.KeyCode == Enum.KeyCode.Slash then
+			task.defer(function()
+				input:CaptureFocus()
+			end)
+		end
+	end)
+
+	local deposit = pillButton("Deposit", 2)
+	deposit.BackgroundColor3 = Colors.Primary
+	deposit.Text = "Deposit"
+	deposit.TextSize = 16
+	deposit.FontFace = Fonts.SemiBold
+	deposit.TextColor3 = Colors.Text
+	Util.padding(0, 18).Parent = deposit
+	Util.hoverBackground(deposit, Colors.Primary, Colors.PrimaryHover)
+	deposit.Parent = right
+	deposit.Activated:Connect(Actions.claimFaucet)
+
+	local favorites = pillButton("Favorites", 3, 40)
+	local star = Icons.star(18, Colors.Text)
+	star.AnchorPoint = Vector2.new(0.5, 0.5)
+	star.Position = UDim2.fromScale(0.5, 0.5)
+	star.Parent = favorites
+	Util.hoverBackground(favorites, Colors.Elevated, Colors.Border)
+	favorites.Parent = right
+	favorites.Activated:Connect(function()
+		Toast.show("Favorites are coming soon", "Info")
+	end)
+
+	local wallet = pillButton("Wallet", 4)
+	Util.padding(0, 14).Parent = wallet
+	Util.hlist(8).Parent = wallet
+	Icons.wallet(16, Colors.Text, 1).Parent = wallet
+	Icons.currency(16, 2).Parent = wallet
+	local balance = Util.text({ Text = "0", Size = 17, Font = Fonts.SemiBold, Order = 3, Parent = wallet })
+	Icons.chevronDown(12, Colors.TextMuted, 4).Parent = wallet
+	Util.hoverBackground(wallet, Colors.Elevated, Colors.Border)
 	wallet.Parent = right
+	wallet.Activated:Connect(nav.Portfolio)
+	Portfolio.Changed:Connect(function()
+		balance.Text = Format.decimal(Portfolio.State.Balance)
+	end)
+	balance.Text = Format.decimal(Portfolio.State.Balance)
+
 	avatar().Parent = right
 
 	return {
 		Frame = frame,
-		Search = input,
-		Balance = balance,
+		SetActive = setActive,
 		-- Odsuwa treść od przycisków Robloxa (menu, czat) w lewym górnym rogu.
 		SetInsets = function(leftInset: number, rightInset: number)
 			padding.PaddingLeft = UDim.new(0, math.max(24, leftInset))

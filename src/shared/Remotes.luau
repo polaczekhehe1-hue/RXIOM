@@ -1,0 +1,29 @@
+--!strict
+-- Remote'y są zdefiniowane w default.project.json (ReplicatedStorage.Remotes).
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local folder = ReplicatedStorage:WaitForChild("Remotes")
+
+local function event(name: string): RemoteEvent
+	return folder:WaitForChild(name) :: RemoteEvent
+end
+
+local function func(name: string): RemoteFunction
+	return folder:WaitForChild(name) :: RemoteFunction
+end
+
+return table.freeze({
+	-- serwer -> klient
+	MarketSnapshot = event("MarketSnapshot"), -- (MarketSnapshot)
+	PortfolioChanged = event("PortfolioChanged"), -- (PortfolioState)
+	Notify = event("Notify"), -- (Notice)
+
+	-- klient -> serwer
+	GetInitialState = func("GetInitialState"), -- () -> InitialState
+	GetCandles = func("GetCandles"), -- (ticker) -> { Candle }
+	SubmitTrade = func("SubmitTrade"), -- (TradeRequest) -> ActionResult
+	PlaceLimitOrder = func("PlaceLimitOrder"), -- (LimitRequest) -> ActionResult
+	CancelLimitOrder = func("CancelLimitOrder"), -- (id) -> ActionResult
+	ClaimFaucet = func("ClaimFaucet"), -- () -> ActionResult
+})

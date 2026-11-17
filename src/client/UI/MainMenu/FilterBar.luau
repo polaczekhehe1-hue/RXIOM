@@ -1,25 +1,32 @@
 --!strict
 -- Pasek pod nawigacją: zakładki (Top, Trending...), przedziały czasu, Quick Buy i presety P1-P3.
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Format = require(ReplicatedStorage.Shared.Format)
+
+local Settings = require(script.Parent.Parent.Parent.State.Settings)
+
 local UI = script.Parent.Parent
 local Icons = require(UI.Icons)
 local Theme = require(UI.Theme)
+local Toast = require(UI.Toast)
 local Util = require(UI.Util)
 
 local create = Util.create
 local Colors = Theme.Colors
 local Fonts = Theme.Fonts
 
-type Tab = { Name: string, Badge: string?, Dropdown: boolean? }
+type Tab = { Name: string, Badge: string?, Dropdown: boolean?, Sort: ("Top" | "Trending")? }
 
 local TABS: { Tab } = {
-	{ Name = "Top" },
-	{ Name = "Trending", Dropdown = true },
+	{ Name = "Top", Sort = "Top" },
+	{ Name = "Trending", Dropdown = true, Sort = "Trending" },
 	{ Name = "Radar", Badge = "NEW" },
 	{ Name = "Callouts" },
 	{ Name = "Streamers", Badge = "NEW" },
 }
-local TIMEFRAMES = { "1m", "5m", "30m", "1h", "24h" }
 local PRESETS = { "P1", "P2", "P3" }
 
 local FilterBar = {}
@@ -29,13 +36,16 @@ FilterBar.Height = 72
 local function segmented(
 	parent: Instance,
 	labels: { string },
-	activeIndex: number,
+	isActive: (string) -> boolean,
 	size: number,
-	activeColor: Color3,
-	idleColor: Color3,
 	onSelect: ((string) -> ())?
-): { TextButton }
+): () -> ()
 	local buttons: { TextButton } = {}
+	local function refresh()
+		for _, b in buttons do
+			Util.tween(b, { TextColor3 = if isActive(b.Name) then Colors.Primary else Colors.Text })
+		end
+	end
 	for i, label in labels do
 		local button: TextButton = create("TextButton", {
 			Name = label,
@@ -46,21 +56,19 @@ local function segmented(
 			Text = label,
 			TextSize = size,
 			FontFace = Fonts.Medium,
-			TextColor3 = if i == activeIndex then activeColor else idleColor,
+			TextColor3 = if isActive(label) then Colors.Primary else Colors.Text,
 			LayoutOrder = i,
 			Parent = parent,
 		}, { Util.padding(0, 8) })
 		button.Activated:Connect(function()
-			for _, b in buttons do
-				Util.tween(b, { TextColor3 = if b == button then activeColor else idleColor })
-			end
 			if onSelect then
 				onSelect(label)
 			end
+			refresh()
 		end)
 		table.insert(buttons, button)
 	end
-	return buttons
+	return refresh
 end
 
 local function badge(text: string): TextLabel
@@ -80,8 +88,17 @@ end
 
 local function tabs(): Frame
 	local frame = Util.group("Tabs", 1, Util.hlist(28))
-	local buttons: { TextButton } = {}
-	local active: TextButton? = nil
+	local labels: { [string]: TextLabel } = {}
+
+	local function isActive(tab: Tab): boolean
+		return tab.Sort ~= nil and tab.Sort == Settings.State.Sort
+	end
+	local function refresh()
+		for _, tab in TABS do
+			Util.tween(labels[tab.Name], { TextColor3 = if isActive(tab) then Colors.Text else Colors.TextMuted })
+		end
+	end
+
 	for i, tab in TABS do
 		local button: TextButton = create("TextButton", {
 			Name = tab.Name,
@@ -102,10 +119,11 @@ local function tabs(): Frame
 			Text = tab.Name,
 			Size = 24,
 			Font = Fonts.Medium,
-			Color = if i == 1 then Colors.Text else Colors.TextMuted,
+			Color = if isActive(tab) then Colors.Text else Colors.TextMuted,
 			Order = 1,
 			Parent = content,
 		})
+		labels[tab.Name] = label
 		if tab.Dropdown then
 			Icons.chevronDown(14, Colors.TextMuted, 2).Parent = content
 		end
@@ -113,45 +131,52 @@ local function tabs(): Frame
 			badge(tab.Badge).Parent = button
 		end
 		button.Activated:Connect(function()
-			active = button
-			for _, b in buttons do
-				local l = b:FindFirstChild("Text", true) :: TextLabel
-				Util.tween(l, { TextColor3 = if b == button then Colors.Text else Colors.TextMuted })
+			if tab.Sort then
+				Settings.set("Sort", tab.Sort)
+			else
+				Toast.show(`{tab.Name} is coming soon`, "Info")
 			end
 		end)
 		button.MouseEnter:Connect(function()
-			if active ~= button then
+			if not isActive(tab) then
 				Util.tween(label, { TextColor3 = Color3.fromHex("B4B7C5") })
 			end
 		end)
 		button.MouseLeave:Connect(function()
-			if active ~= button then
+			if not isActive(tab) then
 				Util.tween(label, { TextColor3 = Colors.TextMuted })
 			end
 		end)
-		if i == 1 then
-			active = button
-		end
-		table.insert(buttons, button)
 	end
+	Settings.Changed:Connect(function(key: string)
+		if key == "Sort" then
+			refresh()
+		end
+	end)
 	return frame
 end
 
-local function quickBuy(onAmountChanged: (number) -> ()): Frame
+local function quickBuy(): Frame
 	local box = create("Frame", {
 		Name = "QuickBuy",
 		Size = UDim2.fromOffset(200, 40),
 		BackgroundColor3 = Colors.Background,
 		LayoutOrder = 2,
 	}, { Util.round(), Util.stroke(Colors.Border), Util.padding(0, 14) })
-	Util.text({ Text = "Quick Buy", Size = 16, Font = Fonts.Medium, Color = Colors.TextMuted }).Parent = box
+	Util.label({
+		Text = "Quick Buy",
+		Size = 16,
+		Color = Colors.TextMuted,
+		FrameSize = UDim2.new(0, 76, 1, 0),
+		Parent = box,
+	})
 	local input: TextBox = create("TextBox", {
 		Name = "Amount",
 		BackgroundTransparency = 1,
 		Position = UDim2.fromOffset(80, 0),
 		Size = UDim2.new(1, -104, 1, 0),
 		ClearTextOnFocus = false,
-		Text = "0",
+		Text = Format.decimal(Settings.State.QuickBuy),
 		TextSize = 17,
 		FontFace = Fonts.SemiBold,
 		TextColor3 = Colors.Text,
@@ -163,19 +188,14 @@ local function quickBuy(onAmountChanged: (number) -> ()): Frame
 	icon.Position = UDim2.fromScale(1, 0.5)
 	icon.Parent = box
 
-	-- Label "Quick Buy" ma AutomaticSize, więc wyśrodkuj go pionowo.
-	local label = box:FindFirstChild("Text") :: TextLabel
-	label.AnchorPoint = Vector2.new(0, 0.5)
-	label.Position = UDim2.fromScale(0, 0.5)
-
 	input.FocusLost:Connect(function()
 		local amount = tonumber(input.Text)
-		if not amount or amount < 0 then
-			amount = 0
+		if not amount or amount ~= amount or amount < 0 or amount == math.huge then
+			amount = Settings.State.QuickBuy
 		end
 		local value = amount :: number
-		input.Text = tostring(value)
-		onAmountChanged(value)
+		input.Text = Format.decimal(value)
+		Settings.set("QuickBuy", value)
 	end)
 	return box
 end
@@ -188,7 +208,18 @@ local function presets(): Frame
 		BackgroundColor3 = Colors.Background,
 		LayoutOrder = 3,
 	}, { Util.round(), Util.stroke(Colors.Border), Util.hlist(0), Util.padding(0, 6) })
-	segmented(frame, PRESETS, 1, 15, Colors.Primary, Colors.Text)
+	local active = "P1"
+	segmented(
+		frame,
+		PRESETS,
+		function(label)
+			return label == active
+		end,
+		15,
+		function(label)
+			active = label
+		end
+	)
 	return frame
 end
 
@@ -196,7 +227,7 @@ export type FilterBar = {
 	Frame: Frame,
 }
 
-function FilterBar.new(onQuickBuyChanged: (number) -> ()): FilterBar
+function FilterBar.new(): FilterBar
 	local frame: Frame = create("Frame", {
 		Name = "FilterBar",
 		BackgroundTransparency = 1,
@@ -215,9 +246,23 @@ function FilterBar.new(onQuickBuyChanged: (number) -> ()): FilterBar
 
 	local times = Util.group("Timeframes", 1, Util.hlist(4))
 	times.Parent = right
-	segmented(times, TIMEFRAMES, 2, 17, Colors.Primary, Colors.Text)
+	local keys = {}
+	for i, timeframe in Config.Timeframes do
+		keys[i] = timeframe.Key
+	end
+	segmented(
+		times,
+		keys,
+		function(label)
+			return label == Settings.State.Timeframe
+		end,
+		17,
+		function(label)
+			Settings.set("Timeframe", label)
+		end
+	)
 
-	quickBuy(onQuickBuyChanged).Parent = right
+	quickBuy().Parent = right
 	presets().Parent = right
 
 	return { Frame = frame }
