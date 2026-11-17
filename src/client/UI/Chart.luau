@@ -219,11 +219,11 @@ function Chart.new(maxCandles: number): Chart
 	-- Pasek nad wykresem: legenda i sterowanie przybliżeniem.
 	Util.label({
 		Name = "Legend",
-		Text = `{Config.CandleSeconds}s candles · Market cap · scroll to zoom, drag to pan`,
+		Text = `{Config.CandleSeconds}s candles · Market cap · scroll to zoom at cursor, drag to move`,
 		Size = 12,
 		Color = Colors.TextDim,
 		Position = UDim2.fromOffset(14, 4),
-		FrameSize = UDim2.new(1, -200, 0, 22),
+		FrameSize = UDim2.new(1, -280, 0, 22),
 		Parent = frame,
 	})
 	local controls = Util.group("Zoom", 0, Util.hlist(4, nil, Enum.HorizontalAlignment.Right))
@@ -231,11 +231,15 @@ function Chart.new(maxCandles: number): Chart
 	controls.Position = UDim2.new(1, -10, 0, 4)
 	controls.ZIndex = 8
 	controls.Parent = frame
-	local zoomOut = controlButton("-", 1)
+	local toStart = controlButton("<<", 1)
+	toStart.Parent = controls
+	local zoomOut = controlButton("-", 2)
 	zoomOut.Parent = controls
-	local zoomIn = controlButton("+", 2)
+	local zoomIn = controlButton("+", 3)
 	zoomIn.Parent = controls
-	local reset = controlButton("Reset", 3)
+	local toEnd = controlButton(">>", 4)
+	toEnd.Parent = controls
+	local reset = controlButton("Reset", 5)
 	reset.Parent = controls
 
 	------------------------------------------------------------------
@@ -354,19 +358,38 @@ function Chart.new(maxCandles: number): Chart
 		end
 	end
 
-	local function zoom(factor: number)
+	-- Przybliża tak, żeby świeca w miejscu `fraction` (0 = lewa krawędź, 1 = prawa) została pod kursorem.
+	local function zoom(factor: number, fraction: number)
 		local nextVisible = math.clamp(math.round(visible * factor), MIN_VISIBLE, maxCandles)
-		if nextVisible ~= visible then
-			visible = nextVisible
-			draw()
+		if nextVisible == visible then
+			return
 		end
+		offset = math.round(offset + (visible - nextVisible) * (1 - fraction))
+		visible = nextVisible
+		draw()
+	end
+
+	local function cursorFraction(x: number): number
+		local width = plot.AbsoluteSize.X
+		if width <= 0 then
+			return 1
+		end
+		return math.clamp((x - plot.AbsolutePosition.X) / width, 0, 1)
 	end
 
 	zoomIn.Activated:Connect(function()
-		zoom(1 / ZOOM_STEP)
+		zoom(1 / ZOOM_STEP, 0.5)
 	end)
 	zoomOut.Activated:Connect(function()
-		zoom(ZOOM_STEP)
+		zoom(ZOOM_STEP, 0.5)
+	end)
+	toStart.Activated:Connect(function()
+		offset = maxOffset()
+		draw()
+	end)
+	toEnd.Activated:Connect(function()
+		offset = 0
+		draw()
 	end)
 	reset.Activated:Connect(function()
 		visible = DEFAULT_VISIBLE
@@ -374,16 +397,17 @@ function Chart.new(maxCandles: number): Chart
 		draw()
 	end)
 
-	plot.InputChanged:Connect(function(input: InputObject)
+	-- Cały wykres (poza przyciskami) reaguje na kółko i przeciąganie, nie tylko pole świec.
+	frame.InputChanged:Connect(function(input: InputObject)
 		if input.UserInputType == Enum.UserInputType.MouseWheel then
-			zoom(if input.Position.Z > 0 then 1 / ZOOM_STEP else ZOOM_STEP)
+			zoom(if input.Position.Z > 0 then 1 / ZOOM_STEP else ZOOM_STEP, cursorFraction(input.Position.X))
 		end
 	end)
 
-	-- Przeciąganie w prawo pokazuje starsze świece.
+	-- Przeciąganie w prawo pokazuje starsze świece, w lewo nowsze.
 	local dragStartX: number? = nil
 	local dragStartOffset = 0
-	plot.InputBegan:Connect(function(input: InputObject)
+	frame.InputBegan:Connect(function(input: InputObject)
 		local kind = input.UserInputType
 		if kind == Enum.UserInputType.MouseButton1 or kind == Enum.UserInputType.Touch then
 			dragStartX = input.Position.X
