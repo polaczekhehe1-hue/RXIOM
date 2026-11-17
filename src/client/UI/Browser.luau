@@ -1,7 +1,6 @@
 --!strict
--- Okno "przeglądarki", w którym gracz ogląda rxiom.pro: pasek kart i pasek adresu jak w Chrome.
--- Rysowane w prawdziwych pikselach (bez UIScale), żeby zawsze pasowało do przycisków Robloxa,
--- które pełnią tu rolę przycisków okna: pasek kart ma ich wysokość, a karta zaczyna się obok nich.
+-- Okno "przeglądarki", w którym gracz ogląda rxiom.pro: kompaktowy pasek kart i pasek adresu jak w Chrome.
+-- Rysowane w pikselach ekranu (bez UIScale). Przyciski Robloxa leżą na nim w lewym górnym rogu.
 
 local Icons = require(script.Parent.Icons)
 local Theme = require(script.Parent.Theme)
@@ -11,9 +10,10 @@ local create = Util.create
 local Colors = Theme.Colors
 local Fonts = Theme.Fonts
 
-local MIN_STRIP_HEIGHT = 40
-local TOOLBAR_HEIGHT = 44
-local TAB_WIDTH = 260
+local STRIP_HEIGHT = 36
+local TAB_TOP = 6
+local TOOLBAR_HEIGHT = 38
+local TAB_WIDTH = 230
 
 export type Callbacks = {
 	Back: () -> (),
@@ -36,7 +36,7 @@ local function toolButton(name: string, order: number): TextButton
 	local button: TextButton = create("TextButton", {
 		Name = name,
 		AutoButtonColor = false,
-		Size = UDim2.fromOffset(32, 32),
+		Size = UDim2.fromOffset(28, 28),
 		BackgroundColor3 = Colors.ChromeField,
 		BackgroundTransparency = 1,
 		Text = "",
@@ -55,7 +55,7 @@ end
 function Browser.new(callbacks: Callbacks): Browser
 	local frame: Frame = create("Frame", {
 		Name = "Browser",
-		Size = UDim2.new(1, 0, 0, MIN_STRIP_HEIGHT + TOOLBAR_HEIGHT),
+		Size = UDim2.new(1, 0, 0, STRIP_HEIGHT + TOOLBAR_HEIGHT),
 		BackgroundColor3 = Colors.ChromeStrip,
 		BorderSizePixel = 0,
 		ZIndex = 10,
@@ -65,10 +65,10 @@ function Browser.new(callbacks: Callbacks): Browser
 	local strip: Frame = create("Frame", {
 		Name = "Tabs",
 		BackgroundTransparency = 1,
-		Size = UDim2.new(1, 0, 0, MIN_STRIP_HEIGHT),
+		Size = UDim2.new(1, 0, 0, STRIP_HEIGHT),
 		Parent = frame,
 	})
-	local stripPadding = Util.padding(8, 0, 0, 10) :: UIPadding
+	local stripPadding = Util.padding(TAB_TOP, 0, 0, 10) :: UIPadding
 	stripPadding.Parent = strip
 	local tabs = Util.group("List", 0, Util.hlist(4, Enum.VerticalAlignment.Bottom))
 	tabs.AutomaticSize = Enum.AutomaticSize.X
@@ -82,7 +82,7 @@ function Browser.new(callbacks: Callbacks): Browser
 		BorderSizePixel = 0,
 		LayoutOrder = 1,
 		Parent = tabs,
-	}, { Util.corner(10) })
+	}, { Util.corner(8) })
 	-- Kwadratowe dolne rogi: karta przechodzi płynnie w pasek adresu.
 	create("Frame", {
 		Name = "Base",
@@ -99,26 +99,26 @@ function Browser.new(callbacks: Callbacks): Browser
 		Size = UDim2.fromScale(1, 1),
 		ZIndex = 2,
 		Parent = tab,
-	}, { Util.padding(0, 12, 0, 14) })
+	}, { Util.padding(0, 10, 0, 12) })
 	local favicon = create("Frame", {
 		Name = "Favicon",
 		AnchorPoint = Vector2.new(0, 0.5),
 		Position = UDim2.fromScale(0, 0.5),
-		Size = UDim2.fromOffset(20, 20),
+		Size = UDim2.fromOffset(16, 16),
 		BackgroundColor3 = Colors.ChromeStrip,
 		Parent = tabContent,
 	}, { Util.corner(5) })
-	center(Icons.logo(10), favicon)
+	center(Icons.logo(8), favicon)
 	local title = Util.label({
 		Name = "Title",
 		Text = "RXIOM",
-		Size = 15,
+		Size = 13,
 		Font = Fonts.Medium,
-		Position = UDim2.fromOffset(30, 0),
-		FrameSize = UDim2.new(1, -56, 1, 0),
+		Position = UDim2.fromOffset(24, 0),
+		FrameSize = UDim2.new(1, -46, 1, 0),
 		Parent = tabContent,
 	})
-	local closeIcon = Icons.close(12, Colors.TextMuted)
+	local closeIcon = Icons.close(10, Colors.TextMuted)
 	closeIcon.AnchorPoint = Vector2.new(1, 0.5)
 	closeIcon.Position = UDim2.fromScale(1, 0.5)
 	closeIcon.Parent = tabContent
@@ -126,9 +126,9 @@ function Browser.new(callbacks: Callbacks): Browser
 	create("TextLabel", {
 		Name = "NewTab",
 		BackgroundTransparency = 1,
-		Size = UDim2.new(0, 34, 1, 0),
+		Size = UDim2.new(0, 28, 1, 0),
 		Text = "+",
-		TextSize = 22,
+		TextSize = 18,
 		FontFace = Fonts.Regular,
 		TextColor3 = Colors.TextMuted,
 		LayoutOrder = 2,
@@ -155,26 +155,26 @@ function Browser.new(callbacks: Callbacks): Browser
 	nav.Position = UDim2.new(0, 10, 0.5, 0)
 	nav.Parent = toolbar
 	local backButton = toolButton("Back", 1)
-	local backIcon = Icons.arrow(16, Colors.Text, "Left")
+	local backIcon = Icons.arrow(14, Colors.Text, "Left")
 	center(backIcon, backButton)
 	backButton.Parent = nav
 	local forwardButton = toolButton("Forward", 2)
-	local forwardIcon = Icons.arrow(16, Colors.Text, "Right")
+	local forwardIcon = Icons.arrow(14, Colors.Text, "Right")
 	center(forwardIcon, forwardButton)
 	forwardButton.Parent = nav
 	local refreshButton = toolButton("Refresh", 3)
-	center(Icons.refresh(16, Colors.Text, Colors.ChromeBar), refreshButton)
+	center(Icons.refresh(14, Colors.Text, Colors.ChromeBar), refreshButton)
 	refreshButton.Parent = nav
 
 	local address: Frame = create("Frame", {
 		Name = "Address",
 		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 124, 0.5, 0),
-		Size = UDim2.new(1, -136, 0, 32),
+		Position = UDim2.new(0, 104, 0.5, 0),
+		Size = UDim2.new(1, -112, 0, 28),
 		BackgroundColor3 = Colors.ChromeField,
 		Parent = toolbar,
 	}, { Util.round(), Util.padding(0, 16) })
-	local lock = Icons.lock(13, Colors.TextMuted)
+	local lock = Icons.lock(11, Colors.TextMuted)
 	lock.AnchorPoint = Vector2.new(0, 0.5)
 	lock.Position = UDim2.fromScale(0, 0.5)
 	lock.Parent = address
@@ -185,7 +185,7 @@ function Browser.new(callbacks: Callbacks): Browser
 		Size = UDim2.new(1, -24, 1, 0),
 		RichText = true,
 		Text = "",
-		TextSize = 15,
+		TextSize = 14,
 		FontFace = Fonts.Regular,
 		TextColor3 = Colors.TextMuted,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -217,15 +217,16 @@ function Browser.new(callbacks: Callbacks): Browser
 			backButton.Active = canBack
 			forwardButton.Active = canForward
 		end,
+		-- Kompaktowe paski jak w Chrome; przyciski Robloxa mogą na nie nachodzić w lewym górnym rogu,
+		-- więc karta i zawartość paska adresu (jeśli przyciski sięgają tak nisko) zaczynają się za nimi.
 		Layout = function(left: number, topbarHeight: number): number
-			local stripHeight = math.max(MIN_STRIP_HEIGHT, math.ceil(topbarHeight))
-			strip.Size = UDim2.new(1, 0, 0, stripHeight)
-			-- Górny margines karty jak margines przycisków Robloxa, żeby ich górne krawędzie się zgadzały.
-			stripPadding.PaddingTop = UDim.new(0, math.clamp(math.round(stripHeight * 0.2), 6, 12))
-			stripPadding.PaddingLeft = UDim.new(0, math.max(10, math.ceil(left)))
-			local total = stripHeight + TOOLBAR_HEIGHT
-			frame.Size = UDim2.new(1, 0, 0, total)
-			return total
+			local contentLeft = math.max(10, math.ceil(left))
+			stripPadding.PaddingLeft = UDim.new(0, contentLeft)
+			local toolbarLeft = if topbarHeight > STRIP_HEIGHT then contentLeft else 10
+			nav.Position = UDim2.new(0, toolbarLeft, 0.5, 0)
+			address.Position = UDim2.new(0, toolbarLeft + 94, 0.5, 0)
+			address.Size = UDim2.new(1, -(toolbarLeft + 102), 0, 28)
+			return STRIP_HEIGHT + TOOLBAR_HEIGHT
 		end,
 	}
 end
