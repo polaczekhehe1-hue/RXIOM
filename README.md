@@ -21,6 +21,7 @@ Zapis postępu (DataStore) działa w opublikowanej grze. W Studio trzeba włącz
 - Boty symulują innych traderów, więc ceny, wolumen i wykresy żyją także przy jednym graczu. Przy starcie serwer symuluje ostatnią godzinę historii.
 - Zlecenia **Limit** wykonują się, gdy market cap dojdzie do celu. **Advanced Trading Strategy** dokłada do kupna take profit i stop loss.
 - **Deposit** daje darmowe RXI co 5 minut.
+- Przy wejściu gracz loguje się przez portfel **Rantom** (wybiera swoje konto Roblox). Przy pierwszym logowaniu dostaje stały adres portfela z 24 znaków, zapisywany w profilu.
 
 Ustawienia ekonomii są w `src/shared/Config.luau`, a lista coinów w `src/shared/Coins.luau`.
 

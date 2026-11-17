@@ -15,7 +15,17 @@ export type Profile = {
 	Balance: number,
 	Positions: { [string]: Types.Position },
 	FaucetReadyAt: number,
+	-- Adres portfela Rantom (24 znaki base58), nadawany przy pierwszym logowaniu.
+	Wallet: string?,
 }
+
+local WALLET_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+local WALLET_LENGTH = 24
+local walletRng = Random.new()
+
+local function isWallet(value: any): boolean
+	return typeof(value) == "string" and #value == WALLET_LENGTH and not string.find(value, "[^1-9A-HJ-NP-Za-km-z]")
+end
 
 local STORE_NAME = "RXIOM_Profiles_v1"
 local AUTOSAVE_SECONDS = 60
@@ -57,6 +67,7 @@ local function sanitize(data: any): Profile
 		Balance = math.max(0, data.Balance),
 		Positions = {},
 		FaucetReadyAt = if finite(data.FaucetReadyAt) then data.FaucetReadyAt else 0,
+		Wallet = if isWallet(data.Wallet) then data.Wallet else nil,
 	}
 	if typeof(data.Positions) == "table" then
 		for ticker, p in data.Positions do
@@ -136,6 +147,7 @@ local function save(player: Player)
 		Balance = profile.Balance,
 		Positions = profile.Positions,
 		FaucetReadyAt = profile.FaucetReadyAt,
+		Wallet = profile.Wallet,
 	}
 	local ok, err = pcall(store.UpdateAsync, store, key(player), function()
 		return payload
@@ -147,6 +159,31 @@ end
 
 function PlayerData.get(player: Player): Profile?
 	return profiles[player]
+end
+
+-- Czeka na wczytanie profilu (np. gdy gracz loguje się zaraz po wejściu).
+function PlayerData.waitFor(player: Player, timeout: number): Profile?
+	local deadline = os.clock() + timeout
+	while not profiles[player] and player.Parent ~= nil and os.clock() < deadline do
+		task.wait(0.1)
+	end
+	return profiles[player]
+end
+
+-- Zwraca adres portfela gracza, nadając nowy przy pierwszym logowaniu. Drugi wynik: czy nowy.
+function PlayerData.ensureWallet(profile: Profile): (string, boolean)
+	local existing = profile.Wallet
+	if existing then
+		return existing, false
+	end
+	local chars = table.create(WALLET_LENGTH)
+	for i = 1, WALLET_LENGTH do
+		local index = walletRng:NextInteger(1, #WALLET_ALPHABET)
+		chars[i] = string.sub(WALLET_ALPHABET, index, index)
+	end
+	local wallet = table.concat(chars)
+	profile.Wallet = wallet
+	return wallet, true
 end
 
 function PlayerData.countHolders(ticker: string): number

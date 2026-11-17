@@ -81,6 +81,15 @@ export type PortfolioState = {
 	Positions: { [string]: Position },
 	Orders: { LimitOrder },
 	FaucetReadyAt: number,
+	Wallet: string?,
+}
+
+export type LoginResult = {
+	Ok: boolean,
+	Error: string?,
+	Wallet: string?,
+	-- true, gdy portfel został właśnie utworzony (pierwsze logowanie).
+	New: boolean?,
 }
 
 -- Amount: RX przy kupnie, procent posiadanych tokenów przy sprzedaży.

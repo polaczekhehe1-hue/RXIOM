@@ -69,6 +69,7 @@ local function portfolio(player: Player): Types.PortfolioState?
 		Positions = profile.Positions,
 		Orders = orders[player] or {},
 		FaucetReadyAt = profile.FaucetReadyAt,
+		Wallet = profile.Wallet,
 	}
 end
 
@@ -460,6 +461,15 @@ function Trading.start()
 	Remotes.ClaimFaucet.OnServerInvoke = claimFaucet
 	Remotes.GetCandles.OnServerInvoke = function(_player: Player, ticker: any)
 		return if typeof(ticker) == "string" then Market.candles(ticker) else {}
+	end
+	Remotes.Login.OnServerInvoke = function(player: Player): Types.LoginResult
+		local profile = PlayerData.waitFor(player, 15)
+		if not profile then
+			return { Ok = false, Error = "Your data is still loading, try again" }
+		end
+		local wallet, isNew = PlayerData.ensureWallet(profile)
+		pushPortfolio(player)
+		return { Ok = true, Wallet = wallet, New = isNew }
 	end
 	Remotes.GetInitialState.OnServerInvoke = function(player: Player): Types.InitialState
 		return {

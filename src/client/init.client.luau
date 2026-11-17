@@ -12,6 +12,7 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Market = require(script.State.Market)
 local Portfolio = require(script.State.Portfolio)
+local Login = require(script.UI.Login)
 local MainMenu = require(script.UI.MainMenu)
 local Toast = require(script.UI.Toast)
 
@@ -19,7 +20,9 @@ local initial: Types.InitialState = Remotes.GetInitialState:InvokeServer()
 Market.start(initial)
 Portfolio.start(initial.Portfolio)
 
-MainMenu.mount()
+local menu = MainMenu.mount()
+-- Ekran logowania przykrywa terminal, dopóki gracz nie połączy portfela Rantom.
+Login.show(menu)
 
 Remotes.Notify.OnClientEvent:Connect(function(notice: Types.Notice)
 	Toast.show(notice.Text, notice.Kind)

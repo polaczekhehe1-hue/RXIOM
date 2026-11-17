@@ -63,7 +63,16 @@ local function pageInfo(page: Page): (string, string)
 	return "RXIOM", "/discover"
 end
 
-function MainMenu.mount(): ScreenGui
+export type Handle = {
+	Gui: ScreenGui,
+	-- Kontener strony rxiom.pro (pod przeglądarką, skalowany UIScale).
+	Root: Frame,
+	-- Pokazuje w przeglądarce podaną stronę i blokuje nawigację (ekran logowania).
+	Lock: (title: string, path: string) -> (),
+	Unlock: () -> (),
+}
+
+function MainMenu.mount(): Handle
 	hideDefaultCoreGui()
 
 	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
@@ -107,6 +116,8 @@ function MainMenu.mount(): ScreenGui
 	local pages: { [string]: GuiObject } = {}
 	local history: { Page } = {}
 	local position = 0
+	-- Podczas logowania przeglądarka pokazuje stronę logowania i nie da się nawigować.
+	local locked = false
 	local browser: Browser.Browser
 	local topBar: TopBar.TopBar
 	local coinView: CoinView.CoinView
@@ -122,6 +133,9 @@ function MainMenu.mount(): ScreenGui
 			portfolioPage.Refresh()
 		end
 		topBar.SetActive(if page.Name == "Portfolio" then "Portfolio" else "Discover")
+		if locked then
+			return
+		end
 		local title, path = pageInfo(page)
 		browser.SetPage(title, path)
 		browser.SetHistory(position > 1, position < #history)
@@ -157,20 +171,20 @@ function MainMenu.mount(): ScreenGui
 
 	browser = Browser.new({
 		Back = function()
-			if position > 1 then
+			if not locked and position > 1 then
 				position -= 1
 				render(history[position])
 			end
 		end,
 		Forward = function()
-			if position < #history then
+			if not locked and position < #history then
 				position += 1
 				render(history[position])
 			end
 		end,
 		Refresh = function()
 			local page = history[position]
-			if page then
+			if page and not locked then
 				render(page)
 			end
 		end,
@@ -232,7 +246,22 @@ function MainMenu.mount(): ScreenGui
 	GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(relayout)
 	relayout()
 
-	return gui
+	return {
+		Gui = gui,
+		Root = root,
+		Lock = function(title: string, path: string)
+			locked = true
+			browser.SetPage(title, path)
+			browser.SetHistory(false, false)
+		end,
+		Unlock = function()
+			locked = false
+			local page = history[position]
+			if page then
+				render(page)
+			end
+		end,
+	}
 end
 
 return MainMenu

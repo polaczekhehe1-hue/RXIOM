@@ -59,6 +59,7 @@
 				"PortfolioChanged": { "$className": "RemoteEvent" },
 				"Notify": { "$className": "RemoteEvent" },
 				"GetInitialState": { "$className": "RemoteFunction" },
+				"Login": { "$className": "RemoteFunction" },
 				"GetCandles": { "$className": "RemoteFunction" },
 				"SubmitTrade": { "$className": "RemoteFunction" },
 				"PlaceLimitOrder": { "$className": "RemoteFunction" },

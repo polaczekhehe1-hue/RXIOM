@@ -40,6 +40,7 @@ Theme.Fonts = table.freeze({
 	Medium = Font.new(FAMILY, Enum.FontWeight.Medium),
 	SemiBold = Font.new(FAMILY, Enum.FontWeight.SemiBold),
 	Bold = Font.new(FAMILY, Enum.FontWeight.Bold),
+	Mono = Font.new("rbxasset://fonts/families/RobotoMono.json", Enum.FontWeight.Medium),
 })
 
 -- Rozdzielczość, pod którą projektowany jest layout; UI skaluje się względem niej.

@@ -21,6 +21,7 @@ return table.freeze({
 
 	-- klient -> serwer
 	GetInitialState = func("GetInitialState"), -- () -> InitialState
+	Login = func("Login"), -- () -> LoginResult
 	GetCandles = func("GetCandles"), -- (ticker) -> { Candle }
 	SubmitTrade = func("SubmitTrade"), -- (TradeRequest) -> ActionResult
 	PlaceLimitOrder = func("PlaceLimitOrder"), -- (LimitRequest) -> ActionResult

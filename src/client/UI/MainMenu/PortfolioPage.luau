@@ -76,6 +76,28 @@ function PortfolioPage.new(openCoin: (ticker: string) -> ()): PortfolioPage
 	local title = Util.text({ Text = "Portfolio", Size = 28, Font = Fonts.Bold, Parent = frame })
 	title.Position = UDim2.fromOffset(0, 8)
 
+	-- Adres portfela Rantom obok tytułu.
+	local walletPill = create("Frame", {
+		Name = "WalletAddress",
+		Position = UDim2.fromOffset(150, 12),
+		Size = UDim2.fromOffset(0, 30),
+		AutomaticSize = Enum.AutomaticSize.X,
+		BackgroundColor3 = Colors.Elevated,
+		Visible = false,
+		Parent = frame,
+	}, { Util.round(), Util.stroke(Colors.Border), Util.padding(0, 12), Util.hlist(8) })
+	Icons.wallet(14, Colors.TextMuted, 1).Parent = walletPill
+	local walletLabel = Util.text({ Text = "", Size = 14, Font = Fonts.Mono, Order = 2, Parent = walletPill })
+	local function refreshWallet()
+		local wallet = Portfolio.State.Wallet
+		walletPill.Visible = wallet ~= nil
+		if wallet then
+			walletLabel.Text = string.sub(wallet, 1, 6) .. "..." .. string.sub(wallet, -6)
+		end
+	end
+	Portfolio.Changed:Connect(refreshWallet)
+	refreshWallet()
+
 	local summary = create("Frame", {
 		Name = "Summary",
 		BackgroundTransparency = 1,
