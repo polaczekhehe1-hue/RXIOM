@@ -21,8 +21,10 @@ local Config = {
 	TickSeconds = 0.25,
 	SnapshotSeconds = 1,
 	CandleSeconds = 10,
-	CandleHistory = 120,
+	CandleHistory = 360,
 	SparkPoints = 24,
+	-- Ile ostatnich transakcji gracza na coinie pamiętać (znaczniki na wykresie).
+	MaxFills = 30,
 	TradeFeedLength = 30,
 	-- Ile historii rynku symulować przy starcie serwera, żeby wykresy i statystyki nie były puste.
 	WarmupSeconds = 3600,

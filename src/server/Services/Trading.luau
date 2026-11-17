@@ -88,9 +88,28 @@ local function position(profile: Profile, ticker: string): Types.Position
 	if existing then
 		return existing
 	end
-	local created = { Tokens = 0, BoughtRx = 0, SoldRx = 0 }
+	local created = { Tokens = 0, BoughtRx = 0, SoldRx = 0, BuyTokens = 0, BuyValue = 0, Fills = {} }
 	profile.Positions[ticker] = created
 	return created
+end
+
+local FEE = Config.FeeBps / 10_000
+
+-- Zapisuje wejście/wyjście do historii pozycji (znaczniki na wykresie, średnia cena wejścia).
+-- `poolRx` to RX, które faktycznie weszły do puli / z niej wyszły, czyli bez prowizji.
+local function recordFill(p: Types.Position, side: Types.Side, poolRx: number, tokens: number)
+	if tokens <= 0 then
+		return
+	end
+	local price = poolRx / tokens
+	table.insert(p.Fills, { T = Market.now(), Side = side, Price = price, Tokens = tokens })
+	while #p.Fills > Config.MaxFills do
+		table.remove(p.Fills, 1)
+	end
+	if side == "Buy" then
+		p.BuyTokens += tokens
+		p.BuyValue += tokens * price
+	end
 end
 
 local function hasOrdersFor(player: Player, ticker: string): boolean
@@ -214,6 +233,7 @@ local function submitTrade(player: Player, request: any): ActionResult
 		local p = position(profile, ticker)
 		p.Tokens += tokens
 		p.BoughtRx += rx + fees
+		recordFill(p, "Buy", rx * (1 - FEE), tokens)
 
 		local bracket = request.Bracket
 		if typeof(bracket) == "table" and finite(bracket.TakeProfit) and finite(bracket.StopLoss) then
@@ -256,7 +276,9 @@ local function submitTrade(player: Player, request: any): ActionResult
 		return fail("Amount too small to cover fees")
 	end
 
-	local rx = Market.executeSell(ticker, tokens, traderName(player), true) - fees
+	local received = Market.executeSell(ticker, tokens, traderName(player), true)
+	local rx = received - fees
+	recordFill(p, "Sell", received / (1 - FEE), tokens)
 	p.Tokens -= tokens
 	p.SoldRx += rx
 	profile.Balance += rx
@@ -375,14 +397,17 @@ local function fill(player: Player, profile: Profile, order: LimitOrder)
 		local p = position(profile, order.Ticker)
 		p.Tokens += tokens
 		p.BoughtRx += order.Rx + order.Fees
+		recordFill(p, "Buy", order.Rx * (1 - FEE), tokens)
 		notify(player, "Success", `Limit buy filled: +{Format.compact(tokens)} {def.Ticker}`)
 	else
 		-- Etykietę liczymy przed sprzedażą, bo sama sprzedaż obniża market cap.
 		local label = if order.Above and order.Below
 			then (if Market.marketCap(order.Ticker) >= order.Above then "Take profit" else "Stop loss")
 			else "Limit sell"
-		local rx = math.max(0, Market.executeSell(order.Ticker, order.Tokens, traderName(player), true) - order.Fees)
+		local received = Market.executeSell(order.Ticker, order.Tokens, traderName(player), true)
+		local rx = math.max(0, received - order.Fees)
 		local p = position(profile, order.Ticker)
+		recordFill(p, "Sell", received / (1 - FEE), order.Tokens)
 		p.SoldRx += rx
 		profile.Balance += rx
 		notify(player, "Success", `{label} filled: {Format.compact(order.Tokens)} {def.Ticker} for {Format.rx(rx)}`)

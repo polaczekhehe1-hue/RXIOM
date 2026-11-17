@@ -176,15 +176,6 @@ function CoinView.new(onBack: () -> ()): CoinView
 	local chart = Chart.new(Config.CandleHistory)
 	chart.Frame.Size = UDim2.new(1, 0, 0.6, -GAP / 2)
 	chart.Frame.Parent = left
-	local chartLegend = Util.label({
-		Text = `{Config.CandleSeconds}s candles · Market cap (USD)`,
-		Size = 12,
-		Color = Colors.TextDim,
-		Position = UDim2.fromOffset(14, 4),
-		FrameSize = UDim2.new(1, -28, 0, 14),
-		Parent = chart.Frame,
-	})
-	chartLegend.ZIndex = 5
 
 	local tradesCard = create("Frame", {
 		Name = "Trades",
@@ -315,6 +306,23 @@ function CoinView.new(onBack: () -> ()): CoinView
 		chart.Set(candles or {}, Config.TotalSupply * Config.UsdPerRx)
 	end
 
+	-- Średnia cena wejścia (RX za token) bieżącej pozycji albo nil, gdy gracz nic nie trzyma.
+	local function entryPrice(): number?
+		local p = if ticker then Portfolio.position(ticker) else nil
+		if not ticker or not p or p.BuyTokens <= 0 then
+			return nil
+		end
+		if Portfolio.totalTokens(ticker) <= Config.DustTokens then
+			return nil
+		end
+		return p.BuyValue / p.BuyTokens
+	end
+
+	local function refreshChartPosition()
+		local p = if ticker then Portfolio.position(ticker) else nil
+		chart.SetPosition(if p then p.Fills else {}, entryPrice())
+	end
+
 	local function refreshTrades()
 		if not ticker then
 			return
@@ -358,7 +366,8 @@ function CoinView.new(onBack: () -> ()): CoinView
 		local sold = if p then p.SoldRx else 0
 		local pnl = sold + value - bought
 		boughtStat.Value.Text = Format.decimal(bought)
-		boughtStat.Sub.Text = "RX"
+		local entry = entryPrice()
+		boughtStat.Sub.Text = if entry then "avg " .. Format.usd(entry * Config.TotalSupply * Config.UsdPerRx) else "RX"
 		soldStat.Value.Text = Format.decimal(sold)
 		soldStat.Sub.Text = "RX"
 		holdingStat.Value.Text = Format.decimal(value)
@@ -454,6 +463,7 @@ function CoinView.new(onBack: () -> ()): CoinView
 	Portfolio.Changed:Connect(function()
 		refreshPosition()
 		refreshOrders()
+		refreshChartPosition()
 	end)
 	Settings.Changed:Connect(function(key: string)
 		if key == "Timeframe" then
@@ -468,6 +478,9 @@ function CoinView.new(onBack: () -> ()): CoinView
 			if not def then
 				return
 			end
+			if newTicker ~= ticker then
+				chart.ResetView()
+			end
 			ticker = newTicker
 			tickerLabel.Text = def.Ticker
 			nameLabel.Text = def.Name
@@ -477,6 +490,7 @@ function CoinView.new(onBack: () -> ()): CoinView
 			Icons.token(def.Color, def.Ticker, 48).Parent = iconSlot
 			panel.SetCoin(newTicker)
 			refreshHeader()
+			refreshChartPosition()
 			refreshChart()
 			refreshTrades()
 			refreshPosition()

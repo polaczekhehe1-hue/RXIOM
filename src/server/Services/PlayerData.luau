@@ -68,7 +68,31 @@ local function sanitize(data: any): Profile
 				and finite(p.SoldRx)
 				and p.Tokens > Config.DustTokens
 			then
-				profile.Positions[ticker] = { Tokens = p.Tokens, BoughtRx = p.BoughtRx, SoldRx = p.SoldRx }
+				local fills = {}
+				if typeof(p.Fills) == "table" then
+					for _, f in p.Fills do
+						if
+							typeof(f) == "table"
+							and finite(f.T)
+							and (f.Side == "Buy" or f.Side == "Sell")
+							and finite(f.Price)
+							and finite(f.Tokens)
+						then
+							table.insert(fills, { T = f.T, Side = f.Side, Price = f.Price, Tokens = f.Tokens })
+						end
+					end
+				end
+				while #fills > Config.MaxFills do
+					table.remove(fills, 1)
+				end
+				profile.Positions[ticker] = {
+					Tokens = p.Tokens,
+					BoughtRx = p.BoughtRx,
+					SoldRx = p.SoldRx,
+					BuyTokens = if finite(p.BuyTokens) then p.BuyTokens else 0,
+					BuyValue = if finite(p.BuyValue) then p.BuyValue else 0,
+					Fills = fills,
+				}
 			end
 		end
 	end

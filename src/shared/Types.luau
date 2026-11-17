@@ -44,10 +44,22 @@ export type MarketSnapshot = {
 	Trades: { TradeEvent },
 }
 
+-- Wykonana transakcja gracza; Price to średnia cena wykonania (RX za token) bez prowizji.
+export type Fill = {
+	T: number,
+	Side: Side,
+	Price: number,
+	Tokens: number,
+}
+
+-- BuyTokens/BuyValue liczą średnią cenę wejścia (BuyValue / BuyTokens) dla bieżącej pozycji.
 export type Position = {
 	Tokens: number,
 	BoughtRx: number,
 	SoldRx: number,
+	BuyTokens: number,
+	BuyValue: number,
+	Fills: { Fill },
 }
 
 -- Zlecenie z warunkiem na market cap ($). Above/Below: wykonaj, gdy MC >= Above lub MC <= Below.
