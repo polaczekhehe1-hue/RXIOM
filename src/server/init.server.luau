@@ -7,7 +7,10 @@ local Bots = require(script.Services.Bots)
 local Market = require(script.Services.Market)
 local PlayerData = require(script.Services.PlayerData)
 local Trading = require(script.Services.Trading)
+local World = require(script.Services.World)
 
+-- Najpierw podłoga, zanim pojawi się postać gracza.
+World.setup()
 Market.init()
 Bots.warmup()
 PlayerData.start()
