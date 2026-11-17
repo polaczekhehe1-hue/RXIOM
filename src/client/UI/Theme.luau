@@ -43,7 +43,7 @@ Theme.Fonts = table.freeze({
 })
 
 -- Rozdzielczość, pod którą projektowany jest layout; UI skaluje się względem niej.
-Theme.DesignSize = Vector2.new(1600, 940)
+Theme.DesignSize = Vector2.new(1600, 860)
 
 Theme.Site = "rxiom.pro"
 

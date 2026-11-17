@@ -82,7 +82,7 @@ function MainMenu.mount(): ScreenGui
 		Parent = gui,
 	})
 
-	-- Layout projektowany pod Theme.DesignSize i skalowany UIScale do ekranu.
+	-- Strona rxiom.pro: skalowana UIScale, pozycjonowana pod przeglądarką w relayout().
 	local root: Frame = create("Frame", {
 		Name = "Root",
 		BackgroundTransparency = 1,
@@ -90,10 +90,10 @@ function MainMenu.mount(): ScreenGui
 	})
 	local uiScale: UIScale = create("UIScale", { Parent = root })
 
-	-- Strona rxiom.pro pod paskami przeglądarki.
 	local site: Frame = create("Frame", {
 		Name = "Site",
 		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
 		Parent = root,
 	})
 	local content: Frame = create("Frame", {
@@ -175,7 +175,7 @@ function MainMenu.mount(): ScreenGui
 			end
 		end,
 	})
-	browser.Frame.Parent = root
+	browser.Frame.Parent = gui
 
 	topBar = TopBar.new(navigation)
 	topBar.Frame.Parent = site
@@ -212,20 +212,20 @@ function MainMenu.mount(): ScreenGui
 		if viewport.X <= 0 or viewport.Y <= 0 then
 			return
 		end
-		local design = Theme.DesignSize
-		local scale = math.clamp(math.min(viewport.X / design.X, viewport.Y / design.Y), 0.5, 2)
-		uiScale.Scale = scale
-		root.Size = UDim2.fromOffset(viewport.X / scale, viewport.Y / scale)
 
-		-- Pasek kart omija przyciski Robloxa w lewym górnym rogu.
+		-- Przeglądarka w pikselach ekranu; karta zaczyna się za przyciskami Robloxa.
 		local inset = GuiService.TopbarInset
 		local hasTopbar = inset.Width > 0
-		local chromeHeight = browser.SetInsets(
-			if hasTopbar then inset.Min.X / scale + 8 else 0,
-			if hasTopbar then inset.Max.Y / scale else 0
-		)
-		site.Position = UDim2.fromOffset(0, chromeHeight)
-		site.Size = UDim2.new(1, 0, 1, -chromeHeight)
+		local chromeHeight =
+			browser.Layout(if hasTopbar then inset.Min.X + 8 else 0, if hasTopbar then inset.Max.Y else 0)
+
+		-- Strona pod nią: projektowana pod Theme.DesignSize i skalowana UIScale do wolnego miejsca.
+		local available = Vector2.new(viewport.X, math.max(1, viewport.Y - chromeHeight))
+		local design = Theme.DesignSize
+		local scale = math.clamp(math.min(available.X / design.X, available.Y / design.Y), 0.5, 2)
+		uiScale.Scale = scale
+		root.Position = UDim2.fromOffset(0, chromeHeight)
+		root.Size = UDim2.fromOffset(available.X / scale, available.Y / scale)
 	end
 
 	gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(relayout)
